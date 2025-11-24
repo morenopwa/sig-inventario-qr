@@ -1,231 +1,343 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
+import './QRScanner.css';
 
-const QRScanner = ({ onResult, onClose }) => {
-  const [manualQR, setManualQR] = useState('');
-  const [showManual, setShowManual] = useState(false);
+const QRScanner = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState(''); // 'loan', 'return', 'new'
+  const [qrData, setQrData] = useState(null);
+  const [equipment, setEquipment] = useState(null);
+  const [equipments, setEquipments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    personName: '',
+    notes: '',
+    equipmentName: '',
+    category: ''
+  });
+
   const scannerRef = useRef(null);
+  const html5QrcodeScannerRef = useRef(null);
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://sig-inventario-qr-backend.onrender.com';
 
+  // Cargar equipos al iniciar
   useEffect(() => {
-    // Cargar la librería dinámicamente para evitar conflictos
-    const loadScanner = async () => {
-      try {
-        const { Html5QrcodeScanner } = await import('html5-qrcode');
-        initializeScanner(Html5QrcodeScanner);
-      } catch (error) {
-        console.error('Error cargando escáner:', error);
-        setShowManual(true);
-      }
-    };
+    fetchEquipments();
+  }, []);
 
-    loadScanner();
+  // Configurar scanner
+  useEffect(() => {
+    if (scannerRef.current && !html5QrcodeScannerRef.current) {
+      initializeScanner();
+    }
 
     return () => {
-      stopScanner();
+      cleanupScanner();
     };
   }, []);
 
-  const initializeScanner = (Html5QrcodeScanner) => {
-    try {
-      // Limpiar cualquier escáner existente
-      stopScanner();
-
-      const qrReaderElement = document.getElementById('qr-reader');
-      if (!qrReaderElement) {
-        console.error('Elemento qr-reader no encontrado');
-        setShowManual(true);
-        return;
-      }
-
-      // Limpiar el contenedor
-      qrReaderElement.innerHTML = '';
-
-      const html5QrcodeScanner = new Html5QrcodeScanner(
-        "qr-reader", 
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          rememberLastUsedCamera: false, // Importante: evitar duplicación
-        },
-        false
-      );
-
-      scannerRef.current = html5QrcodeScanner;
-
-      const onScanSuccess = (decodedText, decodedResult) => {
-        console.log('✅ QR detectado automáticamente:', decodedText);
-        stopScanner();
-        processQRCode(decodedText);
-      };
-
-      const onScanFailure = (error) => {
-        // Ignorar errores normales
-        if (!error?.includes('No QR code found')) {
-          console.warn('Error de escaneo:', error);
-        }
-      };
-
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-      
-    } catch (error) {
-      console.error('Error iniciando escáner:', error);
-      setShowManual(true);
-    }
-  };
-
-  const stopScanner = () => {
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.clear().catch(() => {});
-      } catch (error) {
-        console.log('Error limpiando escáner:', error);
-      }
-      scannerRef.current = null;
-    }
-    
-    // Limpiar manualmente el contenedor
-    const qrReaderElement = document.getElementById('qr-reader');
-    if (qrReaderElement) {
-      qrReaderElement.innerHTML = '';
-    }
-  };
-
-  const processQRCode = (qrCode) => {
-    console.log('📤 Procesando QR:', qrCode);
-    
-    // Usar la URL base del entorno o localhost para desarrollo
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    
-    fetch(`${apiUrl}/api/scan`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  const initializeScanner = () => {
+    html5QrcodeScannerRef.current = new Html5QrcodeScanner(
+      scannerRef.current.id,
+      {
+        qrbox: { width: 250, height: 250 },
+        fps: 5,
+        supportedScanTypes: [],
       },
-      body: JSON.stringify({ qrCode }),
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Error HTTP: ' + response.status);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('✅ Respuesta:', data);
-      onResult({
-        qrCode: qrCode,
-        ...data
+      false
+    );
+
+    html5QrcodeScannerRef.current.render(onScanSuccess, onScanFailure);
+  };
+
+  const cleanupScanner = () => {
+    if (html5QrcodeScannerRef.current) {
+      html5QrcodeScannerRef.current.clear().catch(error => {
+        console.error('Error limpiando scanner:', error);
       });
-    })
-    .catch(err => {
-      console.error('❌ Error:', err);
-      alert('❌ Error: ' + err.message);
+    }
+  };
+
+  const fetchEquipments = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/api/equipments`);
+      const data = await response.json();
+      setEquipments(data);
+    } catch (error) {
+      console.error('Error cargando equipos:', error);
+    }
+  };
+
+  const onScanSuccess = async (decodedText) => {
+    console.log('🔍 QR detectado:', decodedText);
+    
+    await cleanupScanner();
+    setLoading(true);
+    setQrData(decodedText);
+
+    try {
+      const response = await fetch(`${apiUrl}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qrData: decodedText })
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.equipmentFound) {
+        setEquipment(result.equipment);
+        // Si el equipo está prestado, mostrar modal de devolución
+        // Si está disponible, mostrar modal de préstamo
+        setModalType(result.equipment.status === 'prestado' ? 'return' : 'loan');
+      } else {
+        // Equipo no encontrado, mostrar modal para agregar nuevo
+        setEquipment(null);
+        setModalType('new');
+      }
+      
+      setIsModalOpen(true);
+
+    } catch (error) {
+      console.error('❌ Error procesando QR:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onScanFailure = (error) => {
+    if (!error.includes('No MultiFormat Readers')) {
+      console.log('❌ Error escaneando QR:', error);
+    }
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      let endpoint = '';
+      let payload = {};
+
+      if (modalType === 'loan') {
+        endpoint = '/api/loan';
+        payload = {
+          qrCode: qrData,
+          personName: formData.personName,
+          notes: formData.notes
+        };
+      } else if (modalType === 'return') {
+        endpoint = '/api/return';
+        payload = {
+          qrCode: qrData,
+          notes: formData.notes
+        };
+      } else if (modalType === 'new') {
+        endpoint = '/api/equipments';
+        payload = {
+          qrCode: qrData,
+          name: formData.equipmentName,
+          category: formData.category
+        };
+      }
+
+      const response = await fetch(`${apiUrl}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('✅ Operación completada correctamente');
+        closeModal();
+        fetchEquipments(); // Actualizar tabla
+      } else {
+        alert('❌ Error: ' + result.message);
+      }
+
+    } catch (error) {
+      console.error('❌ Error en la operación:', error);
+      alert('❌ Error en la operación');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalType('');
+    setQrData(null);
+    setEquipment(null);
+    setFormData({ personName: '', notes: '', equipmentName: '', category: '' });
+    
+    // Reiniciar scanner
+    setTimeout(() => {
+      initializeScanner();
+    }, 500);
+  };
+
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
     });
   };
 
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualQR.trim()) {
-      processQRCode(manualQR.trim());
+  const getModalTitle = () => {
+    switch (modalType) {
+      case 'loan': return '📥 Registrar Préstamo';
+      case 'return': return '📤 Registrar Devolución';
+      case 'new': return '➕ Agregar Nuevo Equipo';
+      default: return 'Modal';
     }
   };
 
-  const handleClose = () => {
-    stopScanner();
-    onClose();
-  };
-
   return (
-    <div className="qr-scanner">
-      <h2>📷 Escáner QR Automático</h2>
+    <div className="qr-scanner-container">
+      <h1>🏷️ Sistema de Inventario QR</h1>
       
-      {/* Escáner Automático */}
-      <div style={{ 
-        background: '#f8f9fa', 
-        padding: '20px', 
-        borderRadius: '10px',
-        margin: '20px 0',
-        textAlign: 'center'
-      }}>
-        <h4>🔍 Escaneo Automático Activado</h4>
-        <p>Enfoca el código QR dentro del área del escáner</p>
-
-        <div 
-          id="qr-reader"
-          style={{
-            width: '100%',
-            maxWidth: '500px',
-            margin: '0 auto',
-            borderRadius: '10px',
-            overflow: 'hidden',
-            minHeight: '300px'
-          }}
-        ></div>
-
-        <div style={{ margin: '15px 0' }}>
-          <button 
-            className="btn btn-secondary"
-            onClick={() => setShowManual(!showManual)}
-            style={{ margin: '5px' }}
-          >
-            {showManual ? '📷 Ocultar Manual' : '⌨️ Mostrar Manual'}
-          </button>
-        </div>
+      <div className="scanner-section">
+        <div id="qr-scanner" ref={scannerRef} className="scanner-wrapper" />
+        
+        {loading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner"></div>
+            <p>Procesando QR...</p>
+          </div>
+        )}
       </div>
 
-      {/* Opción Manual */}
-      {showManual && (
-        <div style={{ 
-          background: '#e8f4fc', 
-          padding: '20px', 
-          borderRadius: '10px',
-          margin: '20px 0',
-          border: '2px solid #3498db'
-        }}>
-          <h4>⌨️ Ingreso Manual (Respaldo)</h4>
-          <form onSubmit={handleManualSubmit} style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <input
-              type="text"
-              value={manualQR}
-              onChange={(e) => setManualQR(e.target.value)}
-              placeholder="Ingresa el código QR manualmente"
-              style={{ 
-                flex: 1, 
-                minWidth: '250px',
-                padding: '12px', 
-                border: '2px solid #3498db', 
-                borderRadius: '8px',
-                fontSize: '16px'
-              }}
-            />
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              ✅ Procesar
-            </button>
-          </form>
+      {/* Tabla de equipos */}
+      <div className="equipments-table">
+        <h2>📊 Inventario de Equipos</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>QR Code</th>
+              <th>Nombre</th>
+              <th>Categoría</th>
+              <th>Estado</th>
+              <th>Persona Actual</th>
+              <th>Última Actualización</th>
+            </tr>
+          </thead>
+          <tbody>
+            {equipments.map(equip => (
+              <tr key={equip._id} className={equip.status}>
+                <td>{equip.qrCode}</td>
+                <td>{equip.name}</td>
+                <td>{equip.category}</td>
+                <td>
+                  <span className={`status-badge ${equip.status}`}>
+                    {equip.status === 'prestado' ? '📥 Prestado' : '✅ Disponible'}
+                  </span>
+                </td>
+                <td>{equip.currentHolder || '-'}</td>
+                <td>{new Date(equip.updatedAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{getModalTitle()}</h2>
+              <button className="close-button" onClick={closeModal}>×</button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="qr-info">
+                <p><strong>QR Escaneado:</strong> {qrData}</p>
+                {equipment && (
+                  <p><strong>Equipo:</strong> {equipment.name}</p>
+                )}
+              </div>
+
+              <form onSubmit={handleFormSubmit}>
+                {modalType === 'loan' && (
+                  <>
+                    <div className="form-group">
+                      <label>Nombre de la Persona *</label>
+                      <input
+                        type="text"
+                        name="personName"
+                        value={formData.personName}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Ej: Juan Pérez"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Notas (opcional)</label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        placeholder="Observaciones del préstamo..."
+                        rows="3"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {modalType === 'return' && (
+                  <div className="form-group">
+                    <label>Notas de la Devolución (opcional)</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleInputChange}
+                      placeholder="Observaciones de la devolución..."
+                      rows="3"
+                    />
+                  </div>
+                )}
+
+                {modalType === 'new' && (
+                  <>
+                    <div className="form-group">
+                      <label>Nombre del Equipo *</label>
+                      <input
+                        type="text"
+                        name="equipmentName"
+                        value={formData.equipmentName}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Ej: Laptop Dell, Soldadora, etc."
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Categoría *</label>
+                      <input
+                        type="text"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Ej: Electrónica, Herramientas, etc."
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="modal-footer">
+                  <button type="button" onClick={closeModal} className="btn-secondary">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={loading}>
+                    {loading ? 'Procesando...' : 'Confirmar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Botón Cerrar */}
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button 
-          className="btn btn-danger"
-          onClick={handleClose}
-          style={{ 
-            padding: '12px 30px',
-            fontSize: '16px'
-          }}
-        >
-          ❌ Cerrar Escáner
-        </button>
-      </div>
     </div>
   );
 };

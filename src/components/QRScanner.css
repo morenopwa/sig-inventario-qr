@@ -1,0 +1,116 @@
+/* ... (mantén todos los estilos anteriores del modal) ... */
+
+/* Estilos para la tabla */
+.equipments-table {
+  margin-top: 30px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.equipments-table h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+}
+
+tr:hover {
+  background: #f5f5f5;
+}
+
+/* Estados */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-badge.prestado {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.disponible {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+/* Formularios */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.qr-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #007bff;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .equipments-table {
+    overflow-x: auto;
+  }
+  
+  table {
+    min-width: 600px;
+  }
+}
