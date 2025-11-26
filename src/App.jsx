@@ -83,13 +83,8 @@ function App() {
     <div className="app">
       <div className="container">
         <div className="header">
-          <h1>🔍 SIG INVENTARIO QR</h1>
+          <h3>🔍 SIG INVENTARIO QR</h3>
           <p>Sistema Inteligente de Gestión de Inventario</p>
-          <div style={{ marginTop: '10px', fontSize: '0.9rem', opacity: 0.8 }}>
-            <strong>Items registrados:</strong> {items.length} | 
-            <strong> Disponibles:</strong> {items.filter(i => i.status === 'available').length} |
-            <strong> Prestados:</strong> {items.filter(i => i.status === 'borrowed').length}
-          </div>
         </div>
 
         <div className="main-content">
