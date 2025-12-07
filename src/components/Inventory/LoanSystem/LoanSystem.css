@@ -1,0 +1,761 @@
+/* src/components/Inventory/LoanSystem/LoanSystem.css */
+.loan-system-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Encabezado */
+.loan-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  color: white;
+}
+
+.loan-header h2 {
+  margin: 0 0 15px;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  min-width: 120px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+/* Pestañas */
+.loan-tabs {
+  display: flex;
+  background: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 15px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #718096;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.tab-btn.active {
+  color: #ed8936;
+  border-bottom-color: #ed8936;
+  background: white;
+}
+
+/* Contenido */
+.loan-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Formulario de nuevo préstamo */
+.new-loan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.form-section {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.form-section h3 {
+  margin: 0 0 15px;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Grid de equipos */
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.equipment-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.equipment-card:hover {
+  border-color: #cbd5e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.equipment-card.selected {
+  border-color: #48bb78;
+  background: #f0fff4;
+}
+
+.equipment-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf2f7;
+  border-radius: 10px;
+  color: #4a5568;
+}
+
+.equipment-info {
+  flex: 1;
+}
+
+.equipment-info strong {
+  display: block;
+  color: #2d3748;
+  margin-bottom: 4px;
+}
+
+.equipment-code {
+  font-size: 0.85rem;
+  color: #718096;
+  display: block;
+}
+
+.equipment-category {
+  font-size: 0.8rem;
+  color: #a0aec0;
+  display: block;
+  margin-top: 2px;
+}
+
+.equipment-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.equipment-status.available {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+/* Búsqueda de trabajadores */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.search-input::placeholder {
+  color: #a0aec0;
+}
+
+/* Lista de trabajadores */
+.workers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.worker-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.worker-card:hover {
+  border-color: #cbd5e0;
+}
+
+.worker-card.selected {
+  border-color: #4299e1;
+  background: #ebf8ff;
+}
+
+.worker-avatar {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.worker-info {
+  flex: 1;
+}
+
+.worker-info strong {
+  display: block;
+  color: #2d3748;
+  margin-bottom: 2px;
+}
+
+.worker-info span {
+  font-size: 0.85rem;
+  color: #718096;
+  display: block;
+}
+
+.worker-info small {
+  font-size: 0.75rem;
+  color: #a0aec0;
+}
+
+.worker-status {
+  font-size: 0.8rem;
+}
+
+.status-active {
+  color: #48bb78;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-inactive {
+  color: #e53e3e;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Detalles del préstamo */
+.loan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row label {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.date-input,
+.notes-textarea {
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.date-input:focus,
+.notes-textarea:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.notes-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.loan-summary {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 10px;
+}
+
+.loan-summary h4 {
+  margin: 0 0 10px;
+  color: #2d3748;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.summary-item strong {
+  color: #4a5568;
+}
+
+.summary-item span {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+/* Botones del formulario */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-clear,
+.btn-register {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+.btn-clear {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-clear:hover:not(:disabled) {
+  background: #cbd5e0;
+}
+
+.btn-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-register {
+  background: #48bb78;
+  color: white;
+}
+
+.btn-register:hover:not(:disabled) {
+  background: #38a169;
+}
+
+.btn-register:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Préstamos activos */
+.active-loans {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #4a5568;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.btn-export {
+  padding: 8px 16px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.btn-export:hover {
+  background: #3182ce;
+}
+
+.loans-table {
+  overflow-x: auto;
+}
+
+.loans-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.loans-table th {
+  padding: 12px;
+  background: #f7fafc;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: left;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loans-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.loans-table tr:hover {
+  background: #f8fafc;
+}
+
+.loans-table tr.overdue {
+  background: #fff5f5;
+}
+
+.loans-table tr.due-soon {
+  background: #fefcbf;
+}
+
+.equipment-cell,
+.worker-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.equipment-cell strong,
+.worker-cell strong {
+  display: block;
+  color: #2d3748;
+}
+
+.equipment-cell small,
+.worker-cell small {
+  display: block;
+  color: #718096;
+  font-size: 0.85rem;
+}
+
+.days-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.days-badge.overdue {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.days-badge.warning {
+  background: #fefcbf;
+  color: #975a16;
+}
+
+.days-badge.normal {
+  background: #c6f6d5;
+  color: #276749;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.btn-action.return {
+  background: #48bb78;
+  color: white;
+}
+
+.btn-action.return:hover {
+  background: #38a169;
+}
+
+.btn-action.extend {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-action.extend:hover {
+  background: #cbd5e0;
+}
+
+/* Estadísticas de préstamos */
+.loans-stats {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.loans-stats .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-width: 120px;
+}
+
+.stat-card .stat-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.stat-card .stat-icon.overdue {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.stat-card .stat-icon.warning {
+  background: #fefcbf;
+  color: #d69e2e;
+}
+
+.stat-card .stat-icon.normal {
+  background: #c6f6d5;
+  color: #48bb78;
+}
+
+.stat-card .stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  display: block;
+}
+
+.stat-card .stat-label {
+  font-size: 0.85rem;
+  color: #718096;
+  display: block;
+}
+
+/* Estado vacío */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #a0aec0;
+}
+
+.empty-state svg {
+  opacity: 0.5;
+  margin-bottom: 15px;
+}
+
+.empty-state h4 {
+  margin: 0 0 10px;
+  color: #4a5568;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* Toast de devolución */
+.return-toast {
+  padding: 10px;
+}
+
+.return-toast h4 {
+  margin: 0 0 10px;
+}
+
+.condition-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.condition-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.return-notes {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* Scrollbar personalizado */
+.workers-list::-webkit-scrollbar,
+.loans-table::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.workers-list::-webkit-scrollbar-track,
+.loans-table::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.workers-list::-webkit-scrollbar-thumb,
+.loans-table::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.workers-list::-webkit-scrollbar-thumb:hover,
+.loans-table::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .stat {
+    min-width: auto;
+  }
+  
+  .loan-tabs {
+    flex-direction: column;
+  }
+  
+  .equipment-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .btn-clear,
+  .btn-register {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .loans-stats {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .stat-card {
+    justify-content: flex-start;
+  }
+}

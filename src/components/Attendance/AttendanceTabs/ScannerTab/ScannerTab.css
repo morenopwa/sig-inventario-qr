@@ -1,0 +1,343 @@
+/* src/components/Scanner/Scanner.css */
+.scanner-component {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.scanner-header {
+  margin-bottom: 25px;
+}
+
+.scanner-header h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 22px;
+}
+
+.scanner-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.scanner-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.scanner-toggle {
+  padding: 12px 25px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s;
+}
+
+.scanner-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+}
+
+.scanner-toggle.active {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.scanner-toggle.active:hover {
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
+}
+
+.btn-simulate {
+  padding: 12px 25px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s;
+}
+
+.btn-simulate:hover:not(:disabled) {
+  background: #545b62;
+  transform: translateY(-2px);
+}
+
+.btn-simulate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.scanner-preview {
+  position: relative;
+  width: 100%;
+  height: 350px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 25px;
+}
+
+.camera-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+}
+
+.camera-placeholder {
+  text-align: center;
+  color: white;
+  z-index: 1;
+}
+
+.camera-icon {
+  font-size: 80px;
+  margin-bottom: 15px;
+  opacity: 0.7;
+}
+
+.scan-guide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.scan-frame {
+  width: 250px;
+  height: 250px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  position: relative;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes pulse {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.8); }
+  50% { border-color: rgba(0, 255, 0, 0.8); }
+}
+
+.corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #00ff00;
+}
+
+.corner.tl {
+  top: -3px;
+  left: -3px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 5px;
+}
+
+.corner.tr {
+  top: -3px;
+  right: -3px;
+  border-left: none;
+  border-bottom: none;
+  border-top-right-radius: 5px;
+}
+
+.corner.bl {
+  bottom: -3px;
+  left: -3px;
+  border-right: none;
+  border-top: none;
+  border-bottom-left-radius: 5px;
+}
+
+.corner.br {
+  bottom: -3px;
+  right: -3px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 5px;
+}
+
+.guide-text {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.scanning-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.scanning-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #28a745;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.scan-result {
+  margin-top: 20px;
+  animation: fadeIn 0.5s ease;
+}
+
+.result-card {
+  display: flex;
+  gap: 15px;
+  padding: 20px;
+  border-radius: 10px;
+  animation: slideUp 0.3s ease;
+}
+
+.result-card.success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.result-card.error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.result-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.result-content h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.result-details {
+  font-size: 14px;
+}
+
+.result-details p {
+  margin: 5px 0;
+}
+
+.scan-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.error-icon {
+  font-size: 20px;
+}
+
+.scanner-instructions {
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.scanner-instructions h4 {
+  margin: 0 0 15px 0;
+  color: #1565c0;
+  font-size: 16px;
+}
+
+.scanner-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #333;
+}
+
+.scanner-instructions li {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .scanner-component {
+    padding: 20px;
+  }
+  
+  .scanner-preview {
+    height: 300px;
+  }
+  
+  .scan-frame {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .scanner-controls {
+    flex-direction: column;
+  }
+  
+  .scanner-toggle,
+  .btn-simulate {
+    width: 100%;
+    justify-content: center;
+  }
+}

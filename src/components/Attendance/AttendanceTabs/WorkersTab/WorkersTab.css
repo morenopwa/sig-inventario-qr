@@ -1,0 +1,127 @@
+/* src/components/Attendance/AttendanceTabs/WorkersTab/WorkersTab.css */
+.workers-tab {
+  padding: 20px;
+}
+
+.auth-required {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #dee2e6;
+}
+
+.auth-message {
+  text-align: center;
+  max-width: 400px;
+  padding: 40px;
+}
+
+.auth-message h3 {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.btn-login-redirect {
+  padding: 12px 24px;
+  background: #1a237e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 20px;
+  transition: all 0.3s;
+}
+
+.btn-login-redirect:hover {
+  background: #283593;
+  transform: translateY(-2px);
+}
+
+.workers-readonly {
+  padding: 20px;
+}
+
+.admin-restricted-message {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.restricted-icon {
+  font-size: 32px;
+}
+
+.user-info {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.user-role {
+  background: #6c757d;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #1a237e;
+}
+
+.admin-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.workers-section {
+  margin-top: 30px;
+}
+
+.workers-section h3 {
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+@media (max-width: 768px) {
+  .workers-tab {
+    padding: 15px;
+  }
+  
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

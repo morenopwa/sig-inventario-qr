@@ -1,0 +1,152 @@
+/* src/components/Attendance/WorkerQRCard/WorkerQRCard.css */
+.worker-qr-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 300px;
+  margin: 0 auto;
+  border: 1px solid #e9ecef;
+}
+
+.qr-header {
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.qr-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.qr-image-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.qr-image {
+  width: 200px;
+  height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+}
+
+.qr-info {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.qr-info p {
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.qr-info strong {
+  color: #333;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-download,
+.btn-print {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-download {
+  background: #28a745;
+  color: white;
+}
+
+.btn-download:hover {
+  background: #218838;
+}
+
+.btn-print {
+  background: #007bff;
+  color: white;
+}
+
+.btn-print:hover {
+  background: #0056b3;
+}
+
+/* Modal para QR */
+.qr-generated-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.qr-modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.btn-close-modal {
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-close-modal:hover {
+  background: #545b62;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .worker-qr-card {
+    padding: 15px;
+  }
+  
+  .qr-image {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .qr-actions {
+    flex-direction: column;
+  }
+}

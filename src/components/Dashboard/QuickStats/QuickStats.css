@@ -1,0 +1,62 @@
+/* src/components/Dashboard/QuickStats/QuickStats.css */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 15px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 1.5rem;
+}
+
+.stat-icon.present { background: #c6f6d5; color: #276749; }
+.stat-icon.late { background: #fed7d7; color: #c53030; }
+.stat-icon.absent { background: #e2e8f0; color: #4a5568; }
+.stat-icon.overtime { background: #e9d8fd; color: #553c9a; }
+.stat-icon.available { background: #c6f6d5; color: #276749; }
+.stat-icon.loaned { background: #fed7d7; color: #c53030; }
+.stat-icon.maintenance { background: #fefcbf; color: #975a16; }
+.stat-icon.total { background: #bee3f8; color: #2b6cb0; }
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2d3748;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-top: 4px;
+}
