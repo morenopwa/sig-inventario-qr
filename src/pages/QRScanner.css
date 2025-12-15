@@ -1,0 +1,277 @@
+/* src/components/QRScanner.css */
+
+/* ---------------------------------- */
+/* 1. Estilos Base y Tipografía */
+/* ---------------------------------- */
+
+.app-container {
+    padding: 20px 40px;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    background-color: #f8f9fa; /* Gris muy claro para el fondo */
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 1.8rem;
+    color: #343a40;
+    font-weight: 300; /* Minimalismo */
+}
+
+.user-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* ---------------------------------- */
+/* 2. Botones de Acción */
+/* ---------------------------------- */
+
+.action-area {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 40px;
+    align-items: flex-start;
+}
+
+.qr-scanner-placeholder {
+    width: 300px;
+    height: 200px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #6c757d;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: #007bff; /* Azul vibrante */
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+/* ---------------------------------- */
+/* 3. Estilos de Estado (Tags) */
+/* ---------------------------------- */
+
+.status-tag {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: capitalize;
+    font-size: 0.8em;
+    display: inline-block;
+}
+
+/* Verde suave: Disponible / OK */
+.status-available {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+/* Naranja suave: Prestado / En uso */
+.status-borrowed {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Rojo suave: Reparación / Fuera de Servicio */
+.status-repair, .status-broken {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Azul: Nuevo / Pendiente de Asignación */
+.status-new {
+    background-color: #cce5ff;
+    color: #004085;
+    border: 1px solid #b8daff;
+}
+
+/* ---------------------------------- */
+/* 4. Tabla Minimalista */
+/* ---------------------------------- */
+
+.inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.inventory-table th, .inventory-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.inventory-table th {
+    background-color: #e9ecef;
+    color: #343a40;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.inventory-table tr:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+/* ---------------------------------- */
+/* 5. Modales (Limpieza y Enfoque) */
+/* ---------------------------------- */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal h2 {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    color: #343a40;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.input-with-voice {
+    display: flex;
+    gap: 10px;
+}
+
+.input-with-voice input {
+    flex-grow: 1;
+}
+
+.btn-voice {
+    background-color: #ffc107;
+    color: #343a40;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    padding: 0;
+}
+
+.btn-voice.active {
+    background-color: #dc3545;
+    color: white;
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    background-color: #f1f1f1;
+    color: #343a40;
+}
+
+.btn-confirm {
+    background-color: #28a745; /* Verde para confirmar */
+    color: white;
+}
+
+.alert-box {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.worker-alert {
+    background-color: #e6f7ff;
+    color: #004d99;
+    border: 1px solid #99d6ff;
+}

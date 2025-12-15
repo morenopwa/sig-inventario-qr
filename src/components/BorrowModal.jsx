@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const BorrowModal = ({ item, onClose, onSuccess }) => {
+const apiUrl = import.meta.env.VITE_API_URL;
+
+const BorrowModal = ({ item, worker, onClose, onSuccess, almaceneroName }) => {
   const [formData, setFormData] = useState({
     person: '',
     notes: ''
@@ -18,9 +20,11 @@ const BorrowModal = ({ item, onClose, onSuccess }) => {
     }
 
     try {
-      const response = await axios.post('/api/borrow', {
+      const response = await axios.post(`${apiUrl}/api/borrow`, {
         qrCode: item.qrCode,
-        ...formData
+        personName: formData.person,
+        notes: formData.notes,
+        validatedBy: almaceneroName
       });
 
       if (response.data.message) {

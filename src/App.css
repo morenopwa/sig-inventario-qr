@@ -6,7 +6,7 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #dcdfe4 0%);
   min-height: 100vh;
   color: #333;
 }
@@ -273,4 +273,988 @@ body {
 .status-new {
   background: #d1ecf1;
   color: #0c5460;
+}
+
+/* src/App.css (Añadir a tus estilos existentes) */
+
+/* --- Layout General --- */
+body {
+    margin: 0;
+    background-color: #f8f9fa;
+}
+
+.main-content {
+    padding-top: 60px; /* Espacio para la barra de navegación fija */
+}
+
+/* --- Navbar (Pestañas) --- */
+.navbar {
+    background-color: #343a40; /* Fondo oscuro */
+    color: white;
+    padding: 10px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 900;
+}
+
+.navbar-logo {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.navbar-links a {
+    color: #ced4da;
+    text-decoration: none;
+    margin: 0 15px;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-bottom-color 0.2s;
+}
+
+.navbar-links a:hover, .navbar-links a.active {
+    color: white;
+    border-bottom-color: #007bff;
+}
+
+.btn-logout {
+    background: none;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 20px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-logout:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+
+/* --- Login Page Styles --- */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f1f1f1;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+}
+
+.login-box h2 {
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.login-box p {
+    color: #6c757d;
+    margin-bottom: 25px;
+}
+
+/* Estilo base para todas las filas seleccionables */
+.item-row {
+    cursor: pointer;
+    transition: background-color 0.2s, border-left 0.2s;
+}
+
+/* Estilos de fondo para la fila (no confundir con status-tag) */
+.row-status-available, .row-status-new {
+    background-color: #f7fff7; 
+}
+.row-status-borrowed {
+    background-color: #fff0f0; 
+}
+.row-status-repair {
+    background-color: #fffbe6;
+}
+
+/* Estilos de alerta para consumibles */
+.row-status-lowstock {
+    background-color: #fff3cc; /* Fondo amarillo/naranja */
+    border-left: 5px solid orange;
+}
+.row-status-exhausted {
+    background-color: #ffeaea; /* Fondo rojo pálido */
+    border-left: 5px solid red;
+    font-weight: bold;
+}
+
+/* Estilos de las etiquetas de estado (SPAN) */
+.status-tag {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: white;
+}
+.status-available, .status-new {
+    background-color: #4CAF50; /* Verde */
+}
+.status-borrowed {
+    background-color: #f44336; /* Rojo */
+}
+.status-repair {
+    background-color: #FFC107; /* Amarillo */
+}
+
+/* --- TRANSACTION VIEW STYLES --- */
+
+.transaction-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.status-box {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-info, .status-warning {
+    background-color: #ffeeba;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Tabs */
+.tabs-nav {
+    display: flex;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #eee;
+}
+
+.tabs-nav button {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+    color: #555;
+}
+
+.tabs-nav button.active {
+    border-bottom: 3px solid #007bff;
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Grid Simétrico (PC y Tablet) */
+.transaction-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dos columnas simétricas */
+    gap: 40px;
+}
+
+.form-panel, .info-panel {
+    padding: 30px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.panel-title {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #333;
+    font-weight: 300;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 15px;
+}
+
+/* Minimal Form Styling */
+.minimal-form label {
+    display: block;
+    margin-bottom: 15px;
+    font-weight: 500;
+    color: #444;
+}
+
+.minimal-form input, .minimal-form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1em;
+    transition: border-color 0.2s;
+}
+
+.minimal-form input:focus, .minimal-form textarea:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.btn-primary-transaction {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1em;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.2s;
+}
+
+.btn-primary-transaction:hover {
+    background-color: #0056b3;
+}
+
+/* Item Info Card */
+.item-info-card {
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    line-height: 1.6;
+    border-left: 5px solid; /* Usado para el color del estado */
+}
+
+.item-info-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.item-info-card h4 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.item-info-card .item-tag {
+    background: #f0f0f0;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Estilos de Estado (Reutilizando los de QRScanner/ItemRow si los tienes) */
+.item-status-available { border-left-color: #28a745; background: #e9f7ed; }
+.item-status-borrowed { border-left-color: #dc3545; background: #fdf0f1; }
+.item-status-new { border-left-color: #ffc107; background: #fff8e8; }
+.item-status-repair { border-left-color: #6c757d; background: #f2f3f4; }
+.holder-info { font-style: italic; color: #555; font-size: 0.9em; }
+
+.warning-text {
+    color: #dc3545;
+    font-weight: 500;
+    margin-top: 15px;
+}
+
+/* Voice Control Box */
+.voice-control-box {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px dashed #ddd;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.voice-title {
+    margin-top: 0;
+    font-weight: 600;
+    color: #007bff;
+}
+
+.voice-hint {
+    font-size: 0.9em;
+    color: #777;
+    margin-top: 10px;
+}
+
+/* --- RESPONSIVE DESIGN (Celular) --- */
+@media (max-width: 768px) {
+    .transaction-grid {
+        grid-template-columns: 1fr; /* Pila simple en dispositivos pequeños */
+        gap: 20px;
+    }
+    
+    .transaction-container {
+        padding: 0 10px;
+    }
+    
+    .tabs-nav {
+        justify-content: center;
+    }
+}
+
+/* --- BARRA DE NAVEGACIÓN (NAVBAR) --- */
+
+.navbar-header {
+    background-color: #2c3e50; /* Azul oscuro limpio */
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0 20px;
+}
+
+.navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1300px;
+    margin: 0 auto;
+    height: 60px;
+}
+
+.navbar-logo a {
+    color: white;
+    text-decoration: none;
+    font-size: 1.5em;
+    font-weight: 700;
+}
+
+.navbar-links {
+    display: flex;
+    gap: 15px;
+}
+
+.nav-link {
+    color: #bdc3c7; /* Gris claro */
+    text-decoration: none;
+    padding: 8px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.nav-link:hover {
+    color: white;
+    background-color: #34495e; /* Un tono más oscuro en hover */
+}
+
+/* Estilo para el enlace activo */
+.nav-link.active {
+    color: #87ceeb; /* Azul cielo para destacar */
+    background-color: #34495e;
+}
+
+.navbar-user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-name {
+    font-size: 0.9em;
+    font-weight: 400;
+    color: #ecf0f1;
+}
+
+.btn-logout {
+    background-color: #e74c3c; /* Rojo de salida */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.btn-logout:hover {
+    background-color: #c0392b;
+}
+
+/* Responsive para celular */
+@media (max-width: 768px) {
+    .navbar-container {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px 0px;
+    }
+
+    .navbar-links {
+        width: 100%;
+        display: none; /* Ocultar por defecto */
+        flex-direction: column;
+        gap: 0;
+        margin-top: 10px;
+        border-top: 1px solid #34495e;
+    }
+    .nav-link {
+        padding: 10px 15px;
+        text-align: left;
+        border-bottom: 1px solid #34495e;
+        width: 100%;
+    }
+    .navbar-links.open {
+        display: flex; /* Mostrar cuando está abierto (si implementas un botón de toggle) */
+    }
+    
+    .navbar-logo {
+        flex-grow: 1;
+    }
+
+    .navbar-user-info {
+        order: 3; /* Mueve la info de usuario abajo */
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 5px;
+        border-top: 1px solid #34495e;
+        font-size: 0.8em;
+    }
+}
+/* --- ESTILOS MEJORADOS PARA InventoryPage y TransactionView --- */
+
+/* --- 1. BARRA DE CONTROL DE INVENTORYPAGE --- */
+
+.inventory-page-container {
+    max-width: 1300px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.inventory-controls-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.search-input-group {
+    flex-grow: 1; /* Permite que el input crezca */
+    max-width: 500px;
+}
+
+.search-input-fancy {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.3s;
+}
+
+.search-input-fancy:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.btn-register-manual, .btn-add-stock, .btn-history {
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap; /* Evita que el texto se rompa */
+}
+
+.btn-register-manual {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+}
+
+.btn-register-manual:hover {
+    background-color: #27ae60;
+}
+
+/* --- 2. TABLA Y ORDENAMIENTO (INVENTORYPAGE) --- */
+
+.inventory-table-wrapper {
+    width: 100%;
+    overflow-x: auto; /* Permite el scroll horizontal */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+/* Contenedor que permite el scroll en celulares */
+.table-responsive-scroll {
+    overflow-x: auto; 
+    width: 100%;
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px; /* Asegura que la tabla no sea demasiado estrecha en móviles */
+}
+
+.item-table thead th {
+    /* 🔑 Titulos distinguidos */
+    background-color: #34495e; /* Fondo oscuro */
+    color: white;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 700; 
+    border-right: 1px solid #4a6379;
+    user-select: none;
+}
+
+.item-table thead th:last-child {
+    border-right: none;
+}
+
+.item-table tbody td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.item-table tbody tr:hover {
+    background-color: #f7f7f7;
+}
+
+/* Estilos de ordenamiento */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 25px !important;
+}
+
+.sortable::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.3;
+}
+
+.sortable.ascending::after {
+    content: '▲'; /* Flecha ascendente */
+    opacity: 1;
+}
+
+.sortable.descending::after {
+    content: '▼'; /* Flecha descendente */
+    opacity: 1;
+}
+
+/* Botones de Stock y Historial */
+.btn-add-stock {
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+}
+
+.btn-history {
+    background-color: #95a5a6;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+}
+
+/* --- 3. TABLA DE TRANSACTION VIEW (Nueva tabla inferior) --- */
+
+.full-width-table {
+    margin-top: 40px;
+    padding: 20px 0;
+}
+
+.transaction-table-responsive {
+    overflow-x: auto;
+}
+
+.transaction-item-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    min-width: 600px;
+}
+
+.transaction-item-table thead th {
+    background-color: #3498db; /* Azul más claro para diferenciar */
+    color: white;
+    padding: 10px 15px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.item-row-clickable {
+    cursor: pointer;
+}
+
+.item-row-clickable:hover {
+    background-color: #eaf6ff;
+}
+
+.transaction-item-table tbody td {
+    padding: 8px 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.status-cell {
+    font-weight: 600;
+}
+
+
+.status-cell.status-new { color: #f39c12; }
+
+/* RESPONSIVE para InventoryPage Controls */
+@media (max-width: 600px) {
+    .inventory-controls-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .btn-register-manual {
+        order: 1; 
+    }
+    
+    .search-input-group {
+        order: 2;
+        max-width: 100%;
+    }
+    
+    .speech-control {
+        order: 3;
+    }
+}
+/* --- BOTÓN DE ELIMINAR ELEMENTO --- */
+
+.btn-delete-item {
+    background-color: #e74c3c; /* Rojo peligroso */
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-delete-item:hover {
+    background-color: #c0392b;
+}
+
+/* Ajuste general para consistencia de botones */
+.btn-add-stock, .btn-history, .btn-delete-item {
+    font-size: 0.9em;
+    min-width: 80px; /* Asegura un ancho mínimo para simetría */
+}
+
+/* --- ESTILOS PARA TRANSACTION VIEW (VISTA PRINCIPAL) --- */
+
+.search-voice-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    align-items: center;
+}
+
+.search-input-transaction {
+    flex-grow: 1;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1em;
+}
+
+.voice-hint-footer {
+    margin-top: 20px;
+    color: #7f8c8d;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* --- ESTILOS DE LA TABLA DE TRANSACCIONES --- */
+
+.transaction-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.transaction-item-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px; /* Asegura el scroll en móvil */
+}
+
+.transaction-item-table thead th {
+    background-color: #34495e; /* Oscuro y distintivo */
+    color: white;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 700;
+}
+
+.transaction-item-table tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.status-cell.status-available { color: #e8ebe9; font-weight: 600; }
+.status-cell.status-borrowed { color: #f0e3d7; font-weight: 600; }
+
+.btn-borrow-action {
+    background-color: #3498db;
+    color: white;
+}
+.btn-return-action {
+    background-color: #2ecc71;
+    color: white;
+}
+
+/* --- ESTILOS DE MODAL (CLAVE PARA EL CONTRASTE) --- */
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro contrastado */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content-centered {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-width: 450px;
+    width: 90%;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #2c3e50;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #7f8c8d;
+}
+
+.modal-form label {
+    display: block;
+    margin-bottom: 15px;
+    font-weight: 500;
+    color: #34495e;
+}
+
+.modal-form input[type="text"], 
+.modal-form input[type="number"], 
+.modal-form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+.modal-item-code {
+    background-color: #ecf0f1;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+.btn-primary-modal {
+    width: 100%;
+    background-color: #2980b9;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-secondary-modal {
+     width: 100%;
+    background-color: #27ae60; /* Verde para Devolución */
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --- ESTILOS DE GESTIÓN DE USUARIOS --- */
+
+.user-management-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.user-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.btn-primary-user {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-print-mass {
+    background-color: #f39c12;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-table th {
+    background-color: #2c3e50;
+    color: white;
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.user-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.btn-qr-preview {
+    background-color: #9b59b6;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+/* --- ESTILOS DE IMPRESIÓN QR MODAL --- */
+
+.print-modal {
+    max-width: 400px;
+    padding: 0; /* Remove padding for print cleanliness */
+}
+
+.print-area {
+    padding: 20px;
+}
+
+.qr-card {
+    text-align: center;
+    padding: 20px;
+    border: 1px solid #ccc;
+    display: inline-block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.qr-card h2 {
+    font-size: 1.5em;
+    margin-bottom: 5px;
+}
+
+.qr-card p {
+    font-size: 1em;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.qr-code-text {
+    font-size: 0.8em;
+    margin-top: 10px;
+    word-break: break-all;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-around;
+    padding: 15px;
+    border-top: 1px solid #eee;
+}
+
+.btn-print-qr {
+    background-color: #2ecc71;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Ocultar elementos no esenciales al imprimir */
+@media print {
+    body > :not(.print-area) {
+        display: none !important;
+    }
+    .print-modal {
+        box-shadow: none;
+        max-width: 100%;
+    }
 }

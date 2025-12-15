@@ -1,198 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-const ReturnModal = ({ item, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    person: '',
-    notes: ''
-  });
-  const [isListening, setIsListening] = useState(false);
-  const [voiceFeedback, setVoiceFeedback] = useState('');
-  const [lastBorrower, setLastBorrower] = useState('');
+const apiUrl = import.meta.env.VITE_API_URL;
 
-  // Obtener la última persona que lo prestó
-  useEffect(() => {
-    const fetchLastBorrower = async () => {
-      try {
-        const response = await axios.get(`/api/history/${item._id}`);
-        const history = response.data;
-        
-        // Encontrar el último préstamo
-        const lastBorrow = history.find(record => record.action === 'borrow');
-        if (lastBorrow) {
-          setLastBorrower(lastBorrow.person);
-          setFormData(prev => ({ ...prev, person: lastBorrow.person }));
+const ReturnModal = ({ item, almaceneroName, onClose, onSuccess }) => {
+    const [personReturning, setPersonReturning] = useState(''); // Estado para la persona que devuelve
+    const [notes, setNotes] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const handleBackdropClick = (e) => {
+        // Si el clic ocurrió directamente en el 'modal-backdrop' (el div padre), cierra el modal.
+        if (e.target.className === 'modal-backdrop') {
+            onClose();
         }
-      } catch (error) {
-        console.error('Error obteniendo historial:', error);
-      }
     };
-
-    if (item && item._id) {
-      fetchLastBorrower();
-    }
-  }, [item]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     
-    if (!formData.person) {
-      alert('⚠️ Por favor ingrese el nombre de la persona');
-      return;
-    }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
 
-    try {
-      const response = await axios.post('/api/return', {
-        qrCode: item.qrCode,
-        ...formData
-      });
+        if (!personReturning) {
+            setError('Por favor, ingresa el nombre de la persona que devuelve el ítem.');
+            setLoading(false);
+            return;
+        }
 
-      if (response.data.message) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error('Error devolviendo item:', error);
-      alert('❌ Error al devolver el item: ' + (error.response?.data?.error || error.message));
-    }
-  };
+        const dataToSend = {
+            qrCode: item.qrCode,
+            almaceneroName: almaceneroName, // Nombre del usuario actual (Almacenero)
+            personReturning: personReturning, // 🔑 Dato clave que el backend espera
+            notes: notes,
+            // Si el backend necesita el estado, podrías incluirlo, pero generalmente no es necesario para la devolución.
+        };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const startVoiceRecognition = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('❌ El reconocimiento de voz no es compatible con este navegador');
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'es-ES';
-
-    recognition.start();
-    setIsListening(true);
-    setVoiceFeedback('🎤 Escuchando...');
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setVoiceFeedback(`✅ Dijiste: "${transcript}"`);
-      
-      const words = transcript.toLowerCase().split(' ');
-      
-      // Buscar verbos comunes de devolución
-      const verbos = ['devuelve', 'regresa', 'entrega', 'trae'];
-      const verboIndex = words.findIndex(word => verbos.includes(word));
-      
-      if (verboIndex !== -1 && words[verboIndex + 1]) {
-        const nombre = words.slice(verboIndex + 1).join(' ');
-        setFormData(prev => ({ ...prev, person: nombre }));
-      } else {
-        setFormData(prev => ({ ...prev, person: transcript }));
-      }
-
-      setIsListening(false);
+        try {
+            // 🔑 Asegúrate de que la ruta POST sea /api/return
+            await axios.post(`${apiUrl}/api/return`, dataToSend);
+            alert(`✅ Ítem "${item.name}" devuelto con éxito.`);
+            onSuccess();
+        } catch (err) {
+            console.error('Error de API:', err);
+            setError(`Error al registrar devolución. ${err.response?.data?.message || 'Verifica la conexión y el QR del ítem.'}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    recognition.onerror = (event) => {
-      console.error('Error en reconocimiento de voz:', event.error);
-      setVoiceFeedback(`❌ Error: ${event.error}`);
-      setIsListening(false);
-    };
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content modal-return">
+                <h2>📦 Devolución de Ítem</h2>
+                <p>Devolviendo: <strong>{item.name}</strong> (Código: {item.qrCode})</p>
+                <p>Actualmente en manos de: <strong>{item.currentHolder || 'N/A'}</strong></p>
 
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-  };
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Persona que Devuelve:</label>
+                        <input
+                            type="text"
+                            value={personReturning}
+                            onChange={(e) => setPersonReturning(e.target.value)}
+                            placeholder="Nombre del trabajador"
+                            required
+                        />
+                    </div>
 
-  return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h2>📥 Devolver Item</h2>
-        
-        <div style={{ 
-          background: '#e8f4fc', 
-          padding: '15px', 
-          borderRadius: '8px', 
-          marginBottom: '20px',
-          textAlign: 'left'
-        }}>
-          <p><strong>Item:</strong> {item.name}</p>
-          <p><strong>Categoría:</strong> {item.category}</p>
-          <p><strong>Descripción:</strong> {item.description}</p>
-          <p><strong>QR:</strong> {item.qrCode}</p>
-          {lastBorrower && (
-            <p style={{ color: '#e74c3c', fontWeight: 'bold' }}>
-              <strong>Prestado a:</strong> {lastBorrower}
-            </p>
-          )}
-        </div>
+                    <div className="form-group">
+                        <label>Notas Adicionales (Opcional):</label>
+                        <textarea
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Ej: Ítem requiere mantenimiento ligero."
+                        />
+                    </div>
+                    
+                    {error && <p className="error-message">{error}</p>}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Persona que devuelve: *</label>
-            <input
-              type="text"
-              name="person"
-              value={formData.person}
-              onChange={handleChange}
-              placeholder={lastBorrower || "Ej: María González"}
-              required
-            />
-            {lastBorrower && (
-              <small style={{ color: '#666', fontStyle: 'italic' }}>
-                Se autocompletó con la persona que lo tenía prestado. Verifica si es correcto.
-              </small>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label>Notas (opcional):</label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              placeholder="Observaciones o estado del item..."
-              rows="3"
-            />
-          </div>
-
-          <div className="voice-controls">
-            <h4>🎤 Reconocimiento de Voz</h4>
-            <button 
-              type="button"
-              className={`voice-btn ${isListening ? 'listening' : ''}`}
-              onClick={startVoiceRecognition}
-              disabled={isListening}
-            >
-              {isListening ? '🎤 Escuchando...' : '🎤 Decir Nombre'}
-            </button>
-            <p style={{ fontSize: '0.9rem', margin: '10px 0' }}>
-              Ejemplo: "<em>Carlos devuelve el taladro</em>"
-            </p>
-            <div className="voice-feedback">
-              {voiceFeedback}
+                    <div className="modal-actions">
+                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                            {loading ? 'Procesando...' : 'Confirmar Devolución'}
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
             </div>
-          </div>
-
-          <div className="button-group">
-            <button type="button" className="btn btn-danger" onClick={onClose}>
-              ❌ Cancelar
-            </button>
-            <button type="submit" className="btn btn-success">
-              ✅ Registrar Devolución
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default ReturnModal;
