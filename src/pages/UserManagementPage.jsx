@@ -1,315 +1,352 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import useAuth from '../hooks/useAuth'; 
-import * as QRCodeComponent from 'qrcode.react';
+import qrcodeLib from 'qrcode'; 
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
-// Lista de roles permitidos
 const ALLOWED_ROLES = [
-    'Operario', 
-    'Maestro', 
-    'Almacenero', 
-    'Maniobrista', 
-    'Residente', 
-    'Administrador',
-    'Prevencionista',
-    'SuperAdmin'
+    'Maestro calderero', 'Soldador', 'Almacenero', 'Calderero', 
+    'Maniobrista', 'Residente', 'Prevencionista', 'Gestion'
 ];
+const ACCESO_NIVELES = ['Usuario', 'Admin', 'SuperAdmin'];
+const TIPOS_USUARIO = ['Trabajador', 'Externo', 'Visita'];
+
+// Estilos comunes para el diseño del Fotocheck (Reutilizado en individual y masivo)
+const FOTOCHECK_STYLES = `
+    @media print {
+        @page { size: A4; margin: 1cm; }
+        body { background: white; }
+        .no-print { display: none; }
+    }
+    body { font-family: 'Segoe UI', sans-serif; }
+    .card-container { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 10px; 
+        justify-content: flex-start; 
+    }
+    .card { 
+        width: 5.5cm; 
+        height: 8.5cm; 
+        position: relative; 
+        overflow: hidden; 
+        border: 0.5px solid #ccc; 
+        box-sizing: border-box; 
+        page-break-inside: avoid; 
+        margin: 5px; 
+        background: white;
+        display: inline-block;
+        vertical-align: top;
+    }
+    .header { background: #00a884 !important; -webkit-print-color-adjust: exact; height: 1.5cm; display: flex; align-items: center; justify-content: center; color: white; flex-direction: column; }
+    .logo-txt { font-weight: bold; font-size: 14px; letter-spacing: 1px; }
+    .subheader { font-size: 8px; opacity: 0.9; }
+    .content { padding: 8px; text-align: center; }
+    .name { font-size: 13px; font-weight: 800; color: #111; margin-top: 5px; text-transform: uppercase; line-height: 1.1; height: 30px; display: flex; align-items: center; justify-content: center; }
+    .dni-txt { font-size: 10px; color: #555; margin-bottom: 3px; }
+    .qr-container { margin: 0 auto; width: 3.5cm; height: 3.5cm; }
+    .qr-container svg { width: 100%; height: 100%; }
+    .footer-role { 
+        position: absolute; 
+        bottom: 0; 
+        width: 100%; 
+        background: #f4f4f4 !important; 
+        -webkit-print-color-adjust: exact;
+        padding: 5px 0; 
+        border-top: 2px solid #00a884; 
+        font-size: 10px; 
+        font-weight: bold; 
+        color: #333; 
+        text-transform: uppercase; 
+        text-align: center; 
+    }
+`;
 
 // ---------------------------------------------------
-// 🔑 Componente Modal QR (para impresión individual)
+// 🪪 Componente Modal QR Individual
 // ---------------------------------------------------
-const QRPrintModal = ({ isOpen, user, onClose }) => {
+function QRPrintModal({ isOpen, user, onClose }) {
+    const [qrSvg, setQrSvg] = useState('');
+
+    useEffect(() => {
+        if (!isOpen || !user) return;
+        qrcodeLib.toString(user.dni, { type: 'svg', level: 'H', margin: 1 })
+            .then(setQrSvg)
+            .catch(err => console.error('Error QR:', err));
+    }, [isOpen, user]);
+
     if (!isOpen || !user) return null;
 
-    const qrData = user.qrCode || `USER-${user._id}`; // Usamos qrCode si existe, si no, el ID
-
     const handlePrint = () => {
-        const printContent = document.getElementById('qr-print-area');
-        const originalContents = document.body.innerHTML;
-        document.body.innerHTML = printContent.innerHTML;
-        window.print();
-        document.body.innerHTML = originalContents;
-        window.location.reload(); // Recargar para restaurar la vista
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html><head><style>${FOTOCHECK_STYLES}</style></head>
+            <body>
+                <div class="card">
+                    <div class="header">
+                        <div class="logo-txt">S.I. GONZALES</div>
+                        <div class="subheader">IDENTIFICACIÓN DE PERSONAL</div>
+                    </div>
+                    <div class="content">
+                        <div class="name">${user.name}<br>${user.lastName}</div>
+                        <div class="dni-txt">DNI: ${user.dni}</div>
+                        <div class="qr-container">${qrSvg}</div>
+                    </div>
+                    <div class="footer-role">${user.rol || user.tipo}</div>
+                </div>
+            </body></html>
+        `);
+        printWindow.document.close();
+        setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
     };
 
     return (
-        <div className="modal-backdrop" onClick={(e) => e.target.className === 'modal-backdrop' && onClose()}>
-            <div className="modal-content-centered print-modal">
-                <div id="qr-print-area" className="print-area">
-                    <div className="qr-card">
-                        <h2>{user.name}</h2>
-                        <p>Rol: {user.role}</p>
-                        <QRCode value={qrData} size={256} level="H" />
-                        <p className="qr-code-text">{qrData}</p>
+        <div style={st.backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
+            <div style={st.qrPreviewCard}>
+                <div style={{background: '#00a884', padding: '10px', color: 'white'}}>S.I. GONZALES</div>
+                <div style={{padding: '20px'}}>
+                    <div dangerouslySetInnerHTML={{ __html: qrSvg }} style={{width: '140px', margin: '0 auto'}} />
+                    <p style={{color: '#000', fontWeight: 'bold', margin: '10px 0'}}>{user.name} {user.lastName}</p>
+                    <span style={st.badge}>{user.rol || user.tipo}</span>
+                    <div style={st.modalButtons}>
+                        <button onClick={handlePrint} style={st.btnPrimary}>🖨️ Imprimir</button>
+                        <button onClick={onClose} style={st.btnSecondary}>Cerrar</button>
                     </div>
-                </div>
-                
-                <div className="modal-actions">
-                    <button onClick={handlePrint} className="btn btn-print-qr">🖨️ Imprimir</button>
-                    <button onClick={onClose} className="btn btn-secondary-modal">Cerrar</button>
                 </div>
             </div>
         </div>
     );
-};
-
+}
 
 // ---------------------------------------------------
-// Componente principal de la página
+// 👥 Componente Principal
 // ---------------------------------------------------
 const UserManagementPage = () => {
-    const { user } = useAuth();
-    const isSuperAdmin = user?.role === 'SuperAdmin'; 
-
+    const { user: currentUser } = useAuth();
+    const isSuperAdmin = currentUser?.nivelAcceso === 'SuperAdmin'; 
+    
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedId, setSelectedId] = useState(null);
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [isWorker, setIsWorker] = useState(true);
 
-    // Estados para el formulario
-    const [newUserName, setNewUserName] = useState('');
-    const [newPhone, setnewPhone] = useState('');
-    const [newUserRole, setNewUserRole] = useState(ALLOWED_ROLES[0]);
-    const [newUserEmail, setNewUserEmail] = useState('');
-    const [newUserPassword, setNewUserPassword] = useState('');
-    const [statusMessage, setStatusMessage] = useState('');
-
+    const [formData, setFormData] = useState({
+        name: '', lastName: '', dni: '', phone: '', mail: '', rol: '', nivelAcceso: 'Usuario', tipo: 'Trabajador'
+    });
 
     const fetchUsers = useCallback(async () => {
-        if (!isSuperAdmin) return;
-        setLoading(true);
         try {
-            const response = await axios.get(`${apiUrl}/api/workers`, {
-                // Aquí deberías enviar el token de autorización
-            });
+            const response = await axios.get(`${apiUrl}/api/users`);
             setUsers(response.data);
-        } catch (error) {
-            console.error('Error al obtener usuarios:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [isSuperAdmin]);
+        } catch (error) { console.error('Error al cargar'); }
+    }, []);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers, refreshTrigger]);
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-    // --- Handlers ---
+    const filteredUsers = users.filter(u => 
+        (u.name + " " + u.lastName).toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.dni?.includes(searchTerm)
+    );
 
-    const handleRegisterUser = async (e) => {
-        e.preventDefault();
-        setStatusMessage('Registrando usuario...');
-        
-        try {
-            await axios.post(`${apiUrl}/api/workers/register`, {
-                name: newUserName,
-                phone: newPhone,
-                email: newUserEmail,
-                password: newUserPassword,
-                role: newUserRole,
-            });
-            
-            setStatusMessage(`✅ Usuario ${newUserName} registrado exitosamente.`);
-            
-            // Limpiar y cerrar
-            setNewUserName('');
-            setnewPhone('');
-            setNewUserEmail('');
-            setNewUserPassword('');
-            setNewUserRole(ALLOWED_ROLES[0]);
-            setIsRegisterModalOpen(false);
-            setRefreshTrigger(prev => prev + 1);
+    // 🖨️ FUNCIÓN DE IMPRESIÓN MASIVA CORREGIDA
+    const handlePrintAllQR = async () => {
+    const workers = users.filter(u => u.tipo === 'Trabajador');
+    if (workers.length === 0) return alert("No hay trabajadores.");
 
-        } catch (error) {
-            const msg = error.response?.data?.message || error.message;
-            setStatusMessage(`❌ Error: ${msg}`);
-        }
-    };
-    
-    // 🔑 Handler de Eliminación
-    const handleDeleteUser = async (userToDelete) => {
-        if (!window.confirm(`¿Seguro que quieres eliminar al usuario ${userToDelete.name}?`)) {
-            return;
-        }
-        
-        try {
-            await axios.delete(`${apiUrl}/api/users/${userToDelete._id}`);
-            setStatusMessage(`✅ Usuario ${userToDelete.name} eliminado.`);
-            setRefreshTrigger(prev => prev + 1);
-        } catch (error) {
-            const msg = error.response?.data?.message || error.message;
-            setStatusMessage(`❌ Error al eliminar: ${msg}`);
-        }
-    };
-    
-    // 🔑 Handler de Impresión Masiva
-    const handlePrintAllQR = () => {
-        if (users.length === 0) {
-            alert("No hay usuarios registrados para imprimir.");
-            return;
-        }
-        
-        const printWindow = window.open('', '', 'height=600,width=800');
-        printWindow.document.write('<html><head><title>Impresión de QR Masiva</title>');
-        // Estilos básicos para la impresión
-        printWindow.document.write(`
-            <style>
-                body { font-family: sans-serif; display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; }
-                .qr-card { border: 1px solid #ccc; padding: 15px; text-align: center; width: 150px; page-break-inside: avoid; }
-                .qr-code-text { font-size: 0.7em; margin-top: 5px; word-break: break-all; }
-                h2 { font-size: 1em; margin-bottom: 5px; }
-                p { font-size: 0.8em; margin: 0; }
-            </style>`);
-        printWindow.document.write('</head><body>');
-        
-        users.forEach(user => {
-            const qrData = user.qrCode || `USER-${user._id}`;
-            const qrSVG = new QRCode.toString(qrData, { type: 'svg', level: 'H' }); // Generar SVG
-            
-            printWindow.document.write(`
-                <div class="qr-card">
-                    <h2>${user.name}</h2>
-                    <p>Rol: ${user.role}</p>
-                    ${qrSVG}
-                    <p class="qr-code-text">${qrData}</p>
+    const printWindow = window.open('', '_blank');
+    let html = `
+        <html>
+        <head>
+            <style>${FOTOCHECK_STYLES}</style>
+        </head>
+        <body>
+            <div class="card-container">`; // Contenedor flex para agrupar varios
+
+    for (const u of workers) {
+        const svg = await qrcodeLib.toString(u.dni, { type: 'svg', margin: 1 });
+        html += `
+            <div class="card">
+                <div class="header">
+                    <div class="logo-txt">S.I. GONZALES</div>
+                    <div class="subheader">IDENTIFICACIÓN DE PERSONAL</div>
                 </div>
-            `);
-        });
-        
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.print();
-    };
-
-    if (!isSuperAdmin) {
-        return (
-            <div className="user-management-container">
-                <h1>Gestión de Usuarios</h1>
-                <p className="warning-text">🚫 Acceso Denegado. Esta página es solo para Super Administradores.</p>
-            </div>
-        );
+                <div class="content">
+                    <div class="name">${u.name}<br>${u.lastName}</div>
+                    <div class="dni-txt">DNI: ${u.dni}</div>
+                    <div class="qr-container">${svg}</div>
+                </div>
+                <div class="footer-role">${u.rol || 'TRABAJADOR'}</div>
+            </div>`;
     }
-    
-    return (
-        <main className="user-management-container">
-            <h1>Gestión de Usuarios 👥</h1>
-            
-            <div className="user-controls">
-                <button 
-                    onClick={() => setIsRegisterModalOpen(true)} 
-                    className="btn btn-primary-user"
-                >
-                    ➕ Registrar Nuevo Usuario
-                </button>
-                {/* 🔑 Botón de Impresión Masiva */}
-                <button 
-                    onClick={handlePrintAllQR} 
-                    className="btn btn-print-mass"
-                    disabled={loading || users.length === 0}
-                >
-                    🖨️ Imprimir Todos los QRs (A4)
-                </button>
+
+    html += `
             </div>
-            
-            {statusMessage && <div className="status-box status-info">{statusMessage}</div>}
+        </body>
+        </html>`;
+        
+    printWindow.document.write(html);
+    printWindow.document.close();
+    
+    // Esperamos a que cargue todo antes de imprimir
+    printWindow.onload = () => {
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    };
+};
 
-            {loading ? (
-                <p>Cargando lista de usuarios...</p>
-            ) : (
-                <div className="table-responsive-scroll">
-                    <table className="user-table">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                                <th>Rol</th>
-                                {/* 🔑 Nueva Columna QR */}
-                                <th>QR Tarjeta</th> 
-                                <th className="action-col">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(u => (
-                                <tr key={u._id}>
-                                    <td>{u.name}</td>
-                                    <td>{u.email}</td>
-                                    <td>{u.role}</td>
-                                    
-                                    {/* 🔑 Celda con QR Clickable */}
-                                    <td>
-                                        <button 
-                                            onClick={() => {
-                                                setSelectedUser(u);
-                                                setIsQRModalOpen(true);
-                                            }}
-                                            className="btn btn-qr-preview"
-                                        >
-                                            [ Ver QR ]
-                                        </button>
-                                    </td>
-                                    
-                                    <td className="action-cell">
-                                        {/* 🔑 Botón de Eliminación */}
-                                        <button 
-                                            onClick={() => handleDeleteUser(u)} 
-                                            className="btn btn-delete-item"
-                                            disabled={u._id === user._id} // Evitar auto-eliminación
-                                        >
-                                            ❌ Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+    const handleDelete = async (id, name) => {
+        if(window.confirm(`¿Eliminar a ${name}?`)) {
+            try {
+                await axios.delete(`${apiUrl}/api/users/${id}`);
+                fetchUsers();
+            } catch (error) { alert("Error"); }
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const data = {
+                 ...formData, 
+                 tipo: isWorker ? 'Trabajador' : formData.tipo, 
+                 password: formData.dni.trim() };
+            if (isEditMode) {
+                await axios.put(`${apiUrl}/api/users/${selectedId}`, data);
+                lert("Usuario actualizado con éxito");
+            } else {
+                await axios.post(`${apiUrl}/api/users`, data);
+            }
+            closeModal(); fetchUsers();
+        } catch (error) { alert("Error"); }
+    };
+
+    const handleEdit = (u) => {
+       setFormData({ 
+        name: u.name, 
+        lastName: u.lastName, 
+        dni: u.dni, 
+        phone: u.phone || '', 
+        mail: u.mail || '', 
+        rol: u.rol || '', 
+        tipo: u.tipo || 'Trabajador' 
+    });
+        setSelectedId(u._id); 
+        setIsWorker(u.tipo === 'Trabajador');
+        setIsEditMode(true); 
+        setIsRegisterModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsRegisterModalOpen(false); setIsEditMode(false);
+        setFormData({ name: '', lastName: '', dni: '', phone: '', mail: '', rol: '', nivelAcceso: 'Usuario', tipo: 'Trabajador' });
+    };
+
+    if (!isSuperAdmin) return <div style={st.denied}>🚫 Acceso Denegado</div>;
+
+    return (
+        <main style={st.container}>
+            <header style={st.header}>
+                <h1 style={st.title}>Gestión Personal 👥</h1>
+                <div style={st.actions}>
+                    <input placeholder="Buscar..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={st.searchInput}/>
+                    <button onClick={() => setIsRegisterModalOpen(true)} style={st.btnPrimary}>➕</button>
+                    <button onClick={handlePrintAllQR} style={st.btnSecondary} title="Imprimir todos los trabajadores">🖨️ Masivo</button>
                 </div>
-            )}
+            </header>
 
-            {/* Modal de Registro de Usuario */}
+            <div style={st.tableWrapper}>
+                <table style={st.table}>
+                    <thead>
+                        <tr style={st.thr}>
+                            <th style={st.th}>Apellidos y Nombres</th>
+                            <th style={st.th}>DNI</th>
+                            <th style={st.th}>Rol / Tipo</th>
+                            <th style={st.th}>Fecha Inicio</th>
+                            <th style={st.th}>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredUsers.map(u => (
+                            <tr key={u._id} style={st.tr}>
+                                <td style={st.td}>{u.lastName}, {u.name}</td>
+                                <td style={st.td}>{u.dni}</td>
+                                <td style={st.td}><span style={st.badge}>{u.rol || u.tipo}</span></td>
+                                <td style={st.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                                <td style={st.tdActions}>
+                                    <button onClick={() => handleEdit(u)} style={st.btnEdit}>✏️</button>
+                                    <button onClick={() => { setSelectedUser(u); setIsQRModalOpen(true); }} style={st.btnIcon}>💳</button>
+                                    <button onClick={() => handleDelete(u._id, u.name)} style={st.btnDelete}>🗑️</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
             {isRegisterModalOpen && (
-                <div className="modal-backdrop" onClick={(e) => e.target.className === 'modal-backdrop' && setIsRegisterModalOpen(false)}>
-                    <div className="modal-content-centered">
-                        <h2 className="modal-title">Registrar Nuevo Usuario</h2>
-                        <form onSubmit={handleRegisterUser} className="minimal-form">
-                            <label>Nombre Completo:</label>
-                            <input type="text" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} required />
-                            
-                            <label>Telefono:</label>
-                            <input type="telefono" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
-                            
-                            <label>Email (será el usuario de login):</label>
-                            <input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
-                            
-                            <label>Contraseña Temporal:</label>
-                            <input type="password" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required />
-                            
-                            {/* 🔑 Campo Rol con las opciones especificadas */}
-                            <label>Rol:</label>
-                            <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
-                                {ALLOWED_ROLES.map(role => (
-                                    <option key={role} value={role}>{role}</option>
-                                ))}
-                            </select>
-                            
-                            <button type="submit" className="btn btn-primary-modal">Registrar</button>
-                            {statusMessage.includes('Error') && <p className="error-text">{statusMessage}</p>}
+                <div style={st.backdrop} onClick={(e) => e.target === e.currentTarget && closeModal()}>
+                    <div style={st.modalForm}>
+                        <h2 style={{color:'#00a884', marginTop: 0}}>{isEditMode ? 'Editar' : 'Nuevo'}</h2>
+                        <form onSubmit={handleSubmit} style={st.formGrid}>
+                            <input placeholder="Nombres" value={formData.name} required onChange={e=>setFormData({...formData, name: e.target.value})} style={st.input}/>
+                            <input placeholder="Apellidos" value={formData.lastName} required onChange={e=>setFormData({...formData, lastName: e.target.value})} style={st.input}/>
+                            <input placeholder="DNI" value={formData.dni} required onChange={e=>setFormData({...formData, dni: e.target.value})} style={st.input}/>
+                            <label style={{color: '#8696a0', fontSize:'13px'}}><input type="checkbox" checked={isWorker} onChange={e=>setIsWorker(e.target.checked)}/> ¿Trabajador de Obra?</label>
+                            {isWorker ? (
+                                <select style={st.input} value={formData.rol} required onChange={e=>setFormData({...formData, rol: e.target.value})}>
+                                    <option value="">Seleccionar Rol...</option>
+                                    {ALLOWED_ROLES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            ) : (
+                                <select style={st.input} value={formData.tipo} onChange={e=>setFormData({...formData, tipo: e.target.value})}>
+                                    <option value="Externo">Externo</option>
+                                    <option value="Visita">Visita</option>
+                                </select>
+                            )}
+                            <div style={st.modalButtons}>
+                                <button type="submit" style={st.btnPrimary}>Guardar</button>
+                                <button type="button" onClick={closeModal} style={st.btnSecondary}>Cerrar</button>
+                            </div>
                         </form>
                     </div>
                 </div>
             )}
-            
-            {/* Modal de Impresión Individual de QR */}
-            <QRPrintModal 
-                isOpen={isQRModalOpen}
-                user={selectedUser}
-                onClose={() => setIsQRModalOpen(false)}
-            />
+            <QRPrintModal isOpen={isQRModalOpen} user={selectedUser} onClose={() => setIsQRModalOpen(false)} />
         </main>
     );
+};
+
+const st = {
+    container: { padding: '20px', backgroundColor: '#0b141a', minHeight: '100vh', color: 'white' },
+    header: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px', gap: '10px' },
+    title: { color: '#00a884', fontSize: '1.5rem' },
+    actions: { display: 'flex', gap: '10px' },
+    searchInput: { backgroundColor: '#2a3942', border: 'none', padding: '10px', borderRadius: '8px', color: 'white' },
+    tableWrapper: { backgroundColor: '#111b21', borderRadius: '12px', overflowX: 'auto' },
+    table: { width: '100%', borderCollapse: 'collapse', minWidth: '800px' },
+    th: { padding: '15px', color: '#8696a0', textAlign: 'left', borderBottom: '1px solid #2a3942' },
+    td: { padding: '15px', color: '#e9edef' },
+    tdActions: { display: 'flex', gap: '8px', padding: '15px' },
+    badge: { backgroundColor: '#00a88422', color: '#00a884', padding: '4px 8px', borderRadius: '6px', fontSize: '11px' },
+    btnPrimary: { backgroundColor: '#00a884', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' },
+    btnSecondary: { backgroundColor: '#3b4a54', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' },
+    btnEdit: { backgroundColor: '#2a3942', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer' },
+    btnDelete: { backgroundColor: '#442222', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', color: '#ff5555' },
+    btnIcon: { backgroundColor: 'transparent', color: '#00a884', border: '1px solid #00a884', padding: '8px', borderRadius: '6px', cursor: 'pointer' },
+    backdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
+    modalForm: { backgroundColor: '#202c33', padding: '25px', borderRadius: '15px', width: '350px' },
+    qrPreviewCard: { backgroundColor: 'white', borderRadius: '15px', textAlign: 'center', overflow: 'hidden', width: '280px' },
+    formGrid: { display: 'flex', flexDirection: 'column', gap: '12px' },
+    input: { backgroundColor: '#2a3942', border: 'none', padding: '12px', borderRadius: '8px', color: 'white' },
+    modalButtons: { display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center' },
+    denied: { color: 'white', textAlign: 'center', padding: '100px' }
 };
 
 export default UserManagementPage;

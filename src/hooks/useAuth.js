@@ -2,42 +2,39 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const getInitialUser = () => {
-  const storedUser = localStorage.getItem('currentUser');
-  return storedUser ? JSON.parse(storedUser) : null;
-};
-
 const useAuth = () => {
-  const [user, setUser] = useState(getInitialUser());
-  const [isAuthenticated, setIsAuthenticated] = useState(!!getInitialUser());
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('currentUser');
+    return stored ? JSON.parse(stored) : null;
+  });
 
-  // Función de login: Guarda la sesión en localStorage y actualiza el estado
   const login = useCallback((userData) => {
-      localStorage.setItem('currentUser', JSON.stringify(userData));
-      setUser(userData);
-      setIsAuthenticated(true);
+    localStorage.setItem('currentUser', JSON.stringify(userData));
+    setUser(userData);
   }, []);
 
-  // Función de logout: Limpia la sesión
   const logout = useCallback(() => {
-      localStorage.removeItem('currentUser');
-      setUser(null);
-      setIsAuthenticated(false);
-  }, []);
-
-  // Verificar la sesión al cargar (aunque ya lo hacemos con getInitialUser)
-  useEffect(() => {
-    if (getInitialUser()) {
-        setIsAuthenticated(true);
-    }
+    localStorage.removeItem('currentUser');
+    setUser(null);
   }, []);
 
   return {
     user,
-    isAuthenticated,
-    isSuperAdmin: user?.role === 'SuperAdmin', // Nuevo Rol
-    isAlmacenero: user?.role === 'Almacenero' || user?.role === 'SuperAdmin', // SuperAdmin tiene permisos de Almacenero
-    isTrabajador: user?.role === 'Trabajador',
+    isAuthenticated:!!user,
+   
+    // 1. SEGURIDAD: ¿Qué puede hacer en la APP?
+    isSuperAdmin: user?.nivelAcceso === 'SuperAdmin', 
+    isAdmin: user?.nivelAcceso === 'Admin', 
+    isUsuario: user?.nivelAcceso === 'Usuario',
+
+    // 2. LABORAL: ¿Qué puesto ocupa?
+    isAlmacenero: user?.rol === 'Almacenero',
+    isCalderero: user?.rol === 'Calderero',
+
+    // 3. CATEGORÍA: ¿Es de la empresa o externo?
+    isTrabajador: user?.tipo === 'Trabajador',
+    isExterno: user?.tipo === 'Externo',
+
     login, 
     logout,
   };

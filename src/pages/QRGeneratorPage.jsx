@@ -1,40 +1,82 @@
-// src/pages/QRGeneratorPage.jsx
+import React, { useState, useEffect } from 'react';
+import { QRCodeCanvas } from 'qrcode.react'; // Versión más estable para React
+import axios from 'axios';
 
-import React, { useState } from 'react';
-// Importa qrcode.react usando la sintaxis de exportación nombrada
-import * as QRCodeModule from "qrcode.react";
-// importamos la función para generar QR que usa la librería
-import { toCanvas } from 'qrcode'; // Usaremos esta función para generar el canvas/imagen
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const QRGeneratorPage = () => {
-    const [qrValue, setQrValue] = useState('');
-    const [qrList, setQrList] = useState([]);
-    
-    // ... (Funciones para manejar inputs, guardar, e imprimir)
-    
-    const printQRs = () => {
-        // Lógica de impresión (ej: abrir una ventana o usar un componente de impresión)
+    const [items, setItems] = useState([]);
+    const [selectedItems, setSelectedItems] = useState([]);
+
+    useEffect(() => {
+        const fetchItems = async () => {
+            try {
+                const res = await axios.get(`${apiUrl}/api/inventory/items`);
+                setItems(res.data);
+            } catch (err) { console.error("Error cargando items", err); }
+        };
+        fetchItems();
+    }, []);
+
+    const toggleItem = (qrCode) => {
+        setSelectedItems(prev => 
+            prev.includes(qrCode) ? prev.filter(i => i !== qrCode) : [...prev, qrCode]
+        );
+    };
+
+    const handlePrint = () => {
+        const printWindow = window.open('', '_blank');
+        const content = document.getElementById('qr-print-area').innerHTML;
+        printWindow.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { display: flex; flex-wrap: wrap; gap: 20px; font-family: sans-serif; }
+                    .qr-card { border: 1px solid #000; padding: 10px; text-align: center; width: 120px; }
+                    canvas { width: 100px !important; height: 100px !important; }
+                </style>
+            </head>
+            <body>${content}</body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
     };
 
     return (
-        <div className="app-container">
-            <h1>📄 Generador de Códigos QR</h1>
-            
-            {/* Formulario de entrada */}
-            {/* ... (Aquí puedes agregar la lógica para generar QR de ítems o trabajadores ya creados) */}
-            
-            <div id="qr-print-area">
-                {qrList.map((value, index) => (
-                    <div key={index} className="qr-box">
-                        <p>{value}</p>
-                        <QRCode value={value} size={128} level="H" /> 
+        <div style={{ padding: '20px', color: 'white', backgroundColor: '#0b141a', minHeight: '100vh' }}>
+            <h1>📄 Generador de Etiquetas QR</h1>
+            <button onClick={handlePrint} style={st.btnPrimary}>🖨️ Imprimir Seleccionados ({selectedItems.length})</button>
+
+            <div style={st.grid}>
+                {items.map(item => (
+                    <div key={item._id} 
+                         onClick={() => toggleItem(item.qrCode)}
+                         style={{...st.card, borderColor: selectedItems.includes(item.qrCode) ? '#00a884' : '#2a3942'}}>
+                        <QRCodeCanvas value={item.qrCode} size={80} bgColor="#ffffff" />
+                        <p style={{fontSize: '12px', marginTop: '5px'}}>{item.name}</p>
+                        <small>{item.qrCode}</small>
                     </div>
                 ))}
             </div>
 
-            <button onClick={printQRs} className="btn-primary">Imprimir Códigos Seleccionados</button>
+            {/* Área oculta para captura de impresión */}
+            <div id="qr-print-area" style={{ display: 'none' }}>
+                {items.filter(i => selectedItems.includes(i.qrCode)).map(item => (
+                    <div className="qr-card" key={item._id}>
+                        <QRCodeCanvas value={item.qrCode} size={128} />
+                        <p>{item.name}</p>
+                    </div>
+                ))}
+            </div>
         </div>
     );
+};
+
+const st = {
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '15px', marginTop: '20px' },
+    card: { backgroundColor: '#111b21', padding: '10px', borderRadius: '8px', border: '2px solid', cursor: 'pointer', textAlign: 'center' },
+    btnPrimary: { backgroundColor: '#00a884', color: 'white', border: 'none', padding: '12px 20px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }
 };
 
 export default QRGeneratorPage;
