@@ -71,7 +71,7 @@ function QRPrintModal({ isOpen, user, onClose }) {
 
     useEffect(() => {
         if (!isOpen || !user) return;
-        qrcodeLib.toString(user.dni, { type: 'svg', level: 'H', margin: 1 })
+        qrcodeLib.toString(user._id, { type: 'svg', level: 'H', margin: 1 })
             .then(setQrSvg)
             .catch(err => console.error('Error QR:', err));
     }, [isOpen, user]);
@@ -219,12 +219,25 @@ const UserManagementPage = () => {
                  password: formData.dni.trim() };
             if (isEditMode) {
                 await axios.put(`${apiUrl}/api/users/${selectedId}`, data);
-                lert("Usuario actualizado con éxito");
+                alert("Usuario actualizado con éxito");
             } else {
                 await axios.post(`${apiUrl}/api/users`, data);
             }
-            closeModal(); fetchUsers();
-        } catch (error) { alert("Error"); }
+            closeModal(); 
+            fetchUsers();
+        } catch (error) {
+    console.error("Error completo:", error); // Esto te dirá si es 404, 500 o Network Error
+    if (error.response) {
+        // El servidor respondió con algo (400, 401, 500, etc.)
+        console.log("Data del error:", error.response.data);
+        alert(error.response.data.message || "Error del servidor");
+    } else if (error.request) {
+        // La petición se hizo pero no hubo respuesta (Error de red/Backend apagado)
+        alert("No se pudo conectar con el servidor. Revisa tu conexión.");
+    } else {
+        alert("Error: " + error.message);
+    }
+}
     };
 
     const handleEdit = (u) => {
@@ -236,7 +249,7 @@ const UserManagementPage = () => {
         mail: u.mail || '', 
         rol: u.rol || '', 
         tipo: u.tipo || 'Trabajador' 
-    });
+        });
         setSelectedId(u._id); 
         setIsWorker(u.tipo === 'Trabajador');
         setIsEditMode(true); 
@@ -252,7 +265,7 @@ const UserManagementPage = () => {
 
     return (
         <main style={st.container}>
-            <header style={st.header}>
+            <header  className="inventory-controls-bar" style={st.header}>
                 <h1 style={st.title}>Gestión Personal 👥</h1>
                 <div style={st.actions}>
                     <input placeholder="Buscar..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={st.searchInput}/>
@@ -325,10 +338,10 @@ const UserManagementPage = () => {
 
 const st = {
     container: { padding: '20px', backgroundColor: '#0b141a', minHeight: '100vh', color: 'white' },
-    header: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px', gap: '10px' },
+    header: { display: 1, justifyContent: 'space-between', marginBottom: '20px', gap: '10px', overflowY: 'auto'  },
     title: { color: '#00a884', fontSize: '1.5rem' },
     actions: { display: 'flex', gap: '10px' },
-    searchInput: { backgroundColor: '#2a3942', border: 'none', padding: '10px', borderRadius: '8px', color: 'white' },
+    searchInput: { backgroundColor: '#2a3942', border: 'none', padding: '10px', borderRadius: '8px', color: 'white',    flex: '1 1 0%' },
     tableWrapper: { backgroundColor: '#111b21', borderRadius: '12px', overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', minWidth: '800px' },
     th: { padding: '15px', color: '#8696a0', textAlign: 'left', borderBottom: '1px solid #2a3942' },

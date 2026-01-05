@@ -2,30 +2,38 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useState } from 'react';
 import useAuth from './hooks/useAuth';
 
+// Componentes
 import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Páginas (Asegúrate de que los nombres de archivo coincidan)
 import LoginPage from './pages/LoginPage';
-import RegistroChatPage from './views/TransactionView'; 
+import ChatPage from './pages/ChatPage'; // Tu chat (antes TransactionView)
+import InventoryPage from './pages/InventoryPage'; 
 import UserManagementPage from './pages/UserManagementPage';
 import QRGeneratorPage from './pages/QRGeneratorPage'; 
 import AttendancePage from './pages/AttendancePage';
-import InventoryPage from './pages/InventoryPage';
-import SmartInventoryChat from './pages/SmartInventoryChat';
 import PagosPage from './pages/PagosPage';
 
 function App() {
-  const { isAuthenticated, user } = useAuth();
-  // Estado para controlar qué botón brilla en el Navbar
+  const { isAuthenticated } = useAuth();
+  
+  // Estado para refrescar el inventario cuando el chat registra algo
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const refreshInventory = () => setRefreshTrigger(prev => prev + 1);
+
+  // Estado para el botón activo en el Navbar
   const [activeTab, setActiveTab] = useState('registro');
 
   return (
     <Router>
-      {/* ✅ AHORA SÍ PASAMOS LAS PROPS QUE EL NAVBAR PIDE */}
+      {/* El Navbar solo aparece si el usuario está logueado */}
       {isAuthenticated && (
         <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
       )}
       
       <Routes>
-        {/* Redirección inicial inteligente */}
+        {/* Redirección inicial */}
         <Route 
           path="/" 
           element={<Navigate to={isAuthenticated ? "/registro" : "/login"} replace />} 
@@ -36,24 +44,36 @@ function App() {
           element={!isAuthenticated ? <LoginPage /> : <Navigate to="/registro" replace />} 
         />
         
-        {/* Rutas de Almacén y Chat */}
-        <Route path="/registro" element={<RegistroChatPage />} />
-        <Route path="/scanner" element={<QRGeneratorPage />} />
-        <Route path="/inventario" element={<InventoryPage />} />
+        {/* RUTAS PROTEGIDAS */}
+        <Route element={<ProtectedRoute isAllowed={isAuthenticated} />}>
+          
+          {/* Registro Rápido (CHAT) */}
+          <Route 
+            path="/registro" 
+            element={<ChatPage onRefreshInventory={refreshInventory} />} 
+          />
+          
+          {/* Gestión de Stock y Préstamos (INVENTARIO) */}
+          <Route 
+            path="/inventario" 
+            element={<InventoryPage key={refreshTrigger} />} 
+          />
 
-        {/* Rutas de Gestión */}
-        <Route path="/trabajadores" element={<UserManagementPage />} />
-        <Route path="/qr-generator" element={<QRGeneratorPage />} />
-        
-        {/* ✅ OJO: Tu ruta se llama /asistencia en el Navbar, asegúrate que coincida aquí */}
-        <Route path="/asistencia" element={<AttendancePage />} />
+          {/* Gestión de Personal */}
+          <Route path="/trabajadores" element={<UserManagementPage />} />
+          <Route path="/qr-generator" element={<QRGeneratorPage />} />
+          
+          {/* Asistencia y Pagos */}
+          <Route path="/asistencia" element={<AttendancePage />} />
+          <Route path="/pagos" element={<PagosPage />} />
+          
+        </Route>
 
-         <Route path="/pagos" element={<PagosPage />} />
-
-        {/* Si la ruta no existe, vuelve al login */}
+        {/* Si escriben cualquier otra cosa, al login */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
   );
 }
+
 export default App;

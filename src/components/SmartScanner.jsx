@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef,useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 const SmartScanner = ({ onScanSuccess }) => {
     const scannerRef = useRef(null);
     const scannerId = "qr-reader-container";
+    const [isScannerActive, setIsScannerActive] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -83,7 +84,36 @@ const styles = {
         color: '#8696a0',
         fontSize: '12px',
         marginTop: '10px'
-    }
+    },
+    btnStart: {
+        padding: '12px 24px',
+        backgroundColor: '#00a884',
+        color: 'white',
+        border: 'none',
+        borderRadius: '25px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        marginBottom: '20px',
+        display: 'block',
+        margin: '10px auto'
+    },
+    btnStop: {
+        padding: '12px 24px',
+        backgroundColor: '#ea0038',
+        color: 'white',
+        border: 'none',
+        borderRadius: '25px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        marginBottom: '20px',
+        display: 'block',
+        margin: '10px auto'
+    },
+    // Estilo para stock bajo
+    rowAlert: { backgroundColor: 'rgba(234, 0, 56, 0.15)' },
+    
 };
+
+
 
 export default SmartScanner;

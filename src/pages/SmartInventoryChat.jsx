@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-// Usamos la URL de tu backend en Render
-const API_URL = import.meta.env.VITE_API_URL || 'https://sig-inventario-qr-backend.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // --- COMPONENTE DE BOTÓN CON BORRADO ---
 const ItemShortcut = ({ item, onDelete, onClick }) => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [timer, setTimer] = useState(null);
 
-    // Inicia el contador para borrar si se mantiene presionado 2 segundos
     const startTimer = () => {
         const t = setTimeout(() => setIsDeleting(true), 2000);
         setTimer(t);
@@ -35,7 +33,7 @@ const ItemShortcut = ({ item, onDelete, onClick }) => {
         <button
             onMouseDown={startTimer}
             onMouseUp={stopTimer}
-            onMouseLeave={stopTimer} // Cancelar si el mouse sale del botón
+            onMouseLeave={stopTimer}
             onTouchStart={startTimer}
             onTouchEnd={stopTimer}
             onClick={handleClick}
@@ -65,7 +63,7 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
     const [frequent, setFrequent] = useState({ items: [], people: [] });
     const chatEndRef = useRef(null);
 
-    // 1. Cargar datos iniciales
+    // Cargar historial de burbujas y atajos
     const fetchData = async () => {
         try {
             const logsRes = await axios.get(`${API_URL}/api/transactions`);
@@ -73,7 +71,7 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
             const freqRes = await axios.get(`${API_URL}/api/frequent-data`);
             setFrequent(freqRes.data);
         } catch (e) {
-            console.error("Error cargando datos:", e);
+            console.error("Error cargando datos del chat:", e);
         }
     };
 
@@ -85,17 +83,15 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [logs]);
 
-    // 2. Lógica de Atajos (Incremento inteligente)
+    // Manejo de clicks en burbujas de atajos
     const handleItemClick = (itemName) => {
         const regex = /^(\d+)\s+(.+)$/;
         const match = input.match(regex);
         
-        // Si el item ya está en el input, incrementamos la cantidad
         if (match && match[2].trim().toUpperCase() === itemName.toUpperCase()) {
             const newQty = parseInt(match[1]) + 1;
             setInput(`${newQty} ${itemName} `);
         } else {
-            // Si es un item nuevo o el input está vacío
             setInput(`1 ${itemName} `);
         }
     };
@@ -111,7 +107,6 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
     const handleDeleteItem = async (name) => {
         if (window.confirm(`¿Quitar "${name}" de los atajos rápidos?`)) {
             try {
-                // Asegúrate de que esta ruta DELETE exista en tu backend
                 await axios.delete(`${API_URL}/api/frequent-data/item/${encodeURIComponent(name)}`);
                 fetchData(); 
             } catch (err) {
@@ -120,7 +115,7 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
         }
     };
 
-    // 3. Procesar y Enviar a DB
+    // PROCESAR EL TEXTO Y ENVIAR AL BACKEND
     const processInput = async () => {
         let text = input.trim();
         if (!text) return;
@@ -137,35 +132,43 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
         let persona = words.length > 1 ? words.pop() : "General";
         let itemName = (words.join(' ') || text).toUpperCase();
         
-        // Formatear persona: Primera letra Mayúscula
         persona = persona.charAt(0).toUpperCase() + persona.slice(1).toLowerCase();
 
+        // Creamos el objeto exactamente como lo espera tu backend
         const newLog = {
             cantidad: quantity,
             itemName: itemName.trim(),
             persona: persona.trim(),
-            tipo: isInputMode ? 'ingreso' : 'salida'
+            tipo: isInputMode ? 'ingreso' : 'salida',
+            timestamp: new Date().toISOString()
         };
 
         try {
+            // 1. Guardar la transacción
             await axios.post(`${API_URL}/api/transactions`, newLog);
-            setInput('');
-            setIsInputMode(false); // Reset a salida (-)
-            await fetchData(); // Recargar burbujas de chat
             
-            // 🔥 Actualizar tabla de inventario si la función existe
-            if (onRefreshInventory) onRefreshInventory();
+            // 2. Limpiar UI
+            setInput('');
+            setIsInputMode(false); 
+            
+            // 3. Recargar datos locales del chat
+            await fetchData(); 
+            
+            // 4. 🔥 SINCRO: Avisar a la InventoryPage que el stock cambió
+            if (onRefreshInventory) {
+                onRefreshInventory(); 
+            }
             
         } catch (e) {
-            alert(e.response?.data?.error || "Error al guardar el registro.");
+            alert(e.response?.data?.error || "Error al registrar. Asegúrate que el item existe.");
         }
     };
 
     // --- ESTILOS INTERNOS ---
     const s = {
-        container: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#0b141a' },
+        container: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#0b141a' },
         chatArea: { 
-            flex: 1, overflowY: 'auto', padding: '20px', 
+            flex: 1, overflowY: 'auto', padding: '15px', 
             backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded51.png')", 
             backgroundSize: '400px', display: 'flex', flexDirection: 'column'
         },
@@ -190,7 +193,6 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
 
     return (
         <div style={s.container}>
-            {/* 1. Área de Chat */}
             <div style={s.chatArea} className="no-scrollbar">
                 {logs.map((log, idx) => (
                     <div key={log._id || idx} style={s.bubble(log.tipo)}>
@@ -208,7 +210,6 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
                 <div ref={chatEndRef} />
             </div>
 
-            {/* 2. Footer con Controles */}
             <div style={s.footer}>
                 {/* Atajos de Items */}
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px' }} className="no-scrollbar">
@@ -222,12 +223,10 @@ const SmartInventoryChat = ({ onRefreshInventory }) => {
                     ))}
                 </div>
 
-                {/* Input Principal */}
                 <div style={s.inputRow}>
                     <button 
                         style={s.btnCircle(isInputMode, isInputMode)} 
                         onClick={() => setIsInputMode(!isInputMode)}
-                        title={isInputMode ? "Modo Ingreso" : "Modo Salida"}
                     >
                         {isInputMode ? '+' : '−'}
                     </button>
