@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import useAuth from '../hooks/useAuth'; 
 import { Send, Plus, Minus, Box, User as UserIcon, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const ChatPage = ({ onRefreshInventory }) => {
     const { user } = useAuth(); 
@@ -15,6 +16,21 @@ const ChatPage = ({ onRefreshInventory }) => {
     const [isLoading, setIsLoading] = useState(false);
     const chatEndRef = useRef(null);
     const apiUrl = import.meta.env.VITE_API_URL;
+
+    // Función Clasificadora para nuevos registros
+    const classifyCategory = (name) => {
+        if (!name) return 'CONSUMIBLES';
+        const n = name.toUpperCase();
+        const epp = ['LENTE','SOBRELENTE','MANDIL','ESCARPIN', 'GUANTE', 'CASCO', 'ZAPATO', 
+            'CHALECO', 'ARNES', 'MASCARILLA', 'TAPON', 'OREJERA', 
+            'RESPIRADOR', 'BOTAS', 'CONO','CAMISA','PANTALON','RESPIRADOR','BARBIQUEJO'];
+        const tools = ['MARTILLO', 'LLAVE', 'ALICATE', 'TALADRO', 'AMOLADORA', 'MAQUINA',
+            'SIERRA', 'ROTOMARTILLO', 'PALA', 'PICO', 'ANDAMIO', 'PUNTAL', 
+            'APUNTALAR','DESARMADOR','HUINCHA','REGLA','NIVEL','COMBA','CABLE'];
+        if (epp.some(p => n.includes(p))) return 'EPP';
+        if (tools.some(p => n.includes(p))) return 'Herramientas';
+        return 'Consumibles';
+    };
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,6 +68,19 @@ const ChatPage = ({ onRefreshInventory }) => {
         setInput([...words, text.toUpperCase()].join(' ').trim() + ' ');
     };
 
+    // Función para formatear la hora sin desfase UTC (Igual que en Inventory)
+    const formatChatTime = (dateString) => {
+        if (!dateString) return "--:--";
+        try {
+            // Limpiamos 'Z' o milisegundos para tratarlo como hora local pura
+            const cleanDate = dateString.split('.')[0].replace('Z', '');
+            const date = parseISO(cleanDate);
+            return format(date, "HH:mm");
+        } catch (e) {
+            return "--:--";
+        }
+    };
+
     const processInput = async () => {
         const rawText = input.trim();
         if (!rawText) return;
@@ -85,9 +114,12 @@ const ChatPage = ({ onRefreshInventory }) => {
             }
         }
 
+        // CORRECCIÓN DE HORA Y FECHA LOCAL PARA ENVÍO
         const now = new Date();
-        const [year, month, day] = selectedDate.split('-').map(Number);
-        const finalTimestamp = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const timestampLocal = `${selectedDate}T${hh}:${mm}:${ss}`;
 
         try {
             await axios.post(`${apiUrl}/api/transactions`, {
@@ -95,8 +127,9 @@ const ChatPage = ({ onRefreshInventory }) => {
                 unit: manualUnit || 'UND', 
                 itemName, 
                 personName,
+                category: classifyCategory(itemName),
                 type: personName === 'SIMA' ? 'IN' : (isInputMode ? 'IN' : 'OUT'),
-                timestamp: finalTimestamp 
+                timestamp: timestampLocal 
             });
             setInput('');
             fetchData();
@@ -128,7 +161,8 @@ const ChatPage = ({ onRefreshInventory }) => {
                                 <span style={s.itemName}>{log.quantity} {log.unit !== 'UND' ? log.unit : ''} {log.itemName}</span>
                                 <span style={s.personTag}>{log.personName}</span>
                             </div>
-                            <small style={s.time}>{format(new Date(log.timestamp), "HH:mm")}</small>
+                            {/* Cambio aquí: Usamos la nueva función formatChatTime */}
+                            <small style={s.time}>{formatChatTime(log.timestamp)}</small>
                         </div>
                     </div>
                 ))}
@@ -168,7 +202,7 @@ const s = {
     time: { fontSize: '9px', color: '#8696a0', textAlign: 'right', display: 'block', marginTop: '4px' },
     controlPanel: { padding: '10px', backgroundColor: '#202c33' },
     shortcutBar: { display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' },
-    itemBtn: { backgroundColor: '#3b4a54', color: 'white', border: 'none', borderRadius: '15px', padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '12px' },
+    itemBtn: { backgroundColor: '#3b4a54', color: 'white', border: 'none', borderRadius: '15px', padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' },
     workerBtn: { border: '1px solid #34b7f1', color: '#34b7f1', background: 'none', borderRadius: '15px', padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' },
     inputRow: { display: 'flex', gap: '8px' },
     input: { flex: 1, backgroundColor: '#2a3942', border: 'none', borderRadius: '20px', padding: '10px 15px', color: 'white', outline: 'none' },

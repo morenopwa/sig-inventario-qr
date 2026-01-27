@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const InventoryPage = () => {
@@ -10,7 +10,6 @@ const InventoryPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const apiUrl = import.meta.env.VITE_API_URL;
 
-    // Tu función de clasificación original
     const classifyCategory = (name) => {
         if (!name) return 'Consumibles';
         const n = name.toUpperCase();
@@ -23,13 +22,10 @@ const InventoryPage = () => {
 
     const fetchData = useCallback(async () => {
         try {
-            // Conexión exacta con tus rutas de server.js
             const [resItems, resMovs] = await Promise.all([
                 axios.get(`${apiUrl}/api/inventory/items`),
                 axios.get(`${apiUrl}/api/movements`) 
             ]);
-            
-            console.log("Datos recibidos:", { items: resItems.data, movs: resMovs.data });
             setItems(resItems.data || []);
             setMovements(resMovs.data || []);
         } catch (e) { 
@@ -40,6 +36,21 @@ const InventoryPage = () => {
     useEffect(() => { 
         fetchData(); 
     }, [fetchData]);
+
+    // SOLUCIÓN DEFINITIVA PARA LA FECHA:
+    // Forzamos la interpretación de la fecha como local ignorando desfases UTC
+    const formatDisplayDate = (dateString) => {
+        if (!dateString) return { dia: '-', hora: '-' };
+        
+        // Reemplazamos la 'Z' o cualquier desfase para tratarlo como hora local pura
+        const cleanDate = dateString.split('.')[0].replace('Z', '');
+        const date = parseISO(cleanDate);
+
+        return {
+            dia: format(date, "EEEE", { locale: es }),
+            completa: format(date, "dd/MM/yy HH:mm")
+        };
+    };
 
     const filteredData = useMemo(() => {
         const search = searchTerm.toLowerCase();
@@ -56,13 +67,12 @@ const InventoryPage = () => {
         return items.filter(i => {
             const cat = i.category && i.category !== 'General' ? i.category : classifyCategory(i.name);
             return cat.toLowerCase() === activeTab.toLowerCase() && 
-                   (i.name || "").toLowerCase().includes(search);
+                    (i.name || "").toLowerCase().includes(search);
         });
     }, [activeTab, items, movements, searchTerm]);
 
     return (
         <div style={ss.layout}>
-            {/* Barra de Pestañas */}
             <div style={ss.tabBar}>
                 {['Kardex Activo', 'Herramientas', 'Consumibles', 'EPP'].map(t => (
                     <button 
@@ -118,13 +128,14 @@ const InventoryPage = () => {
                                 filteredData.map((row, i) => {
                                     if (activeTab === 'Kardex Activo') {
                                         const isSalida = (row.type || "").includes('SALIDA');
-                                        const date = row.date ? new Date(row.date) : new Date();
+                                        const fechaInfo = formatDisplayDate(row.date);
+                                        
                                         return (
                                             <tr key={i} style={ss.tr}>
                                                 <td style={{...ss.td, color: '#00ffa3', textTransform: 'capitalize'}}>
-                                                    {format(date, "EEEE", {locale: es})}
+                                                    {fechaInfo.dia}
                                                 </td>
-                                                <td style={ss.td}>{format(date, "dd/MM/yy HH:mm")}</td>
+                                                <td style={ss.td}>{fechaInfo.completa}</td>
                                                 <td style={ss.td}><strong>{row.materialName}</strong></td>
                                                 <td style={ss.td}>{row.unit}</td>
                                                 <td style={ss.td}>
@@ -156,7 +167,6 @@ const InventoryPage = () => {
                                                             return acc;
                                                         }, {});
                                                         const entries = Object.entries(grouped || {}).filter(([_, q]) => q > 0);
-                                                        
                                                         return entries.length > 0 ? entries.map(([name, qty], idx) => (
                                                             <div key={idx} style={ss.badge}>{name} ({qty})</div>
                                                         )) : <span style={{color: '#3b4a54'}}>Almacén</span>;
@@ -178,34 +188,17 @@ const InventoryPage = () => {
 const ss = {
     layout: { backgroundColor: '#0b141a', minHeight: '100vh', color: '#e9edef', fontFamily: 'Segoe UI, Roboto, Helvetica, Arial, sans-serif' },
     tabBar: { display: 'flex', backgroundColor: '#202c33', borderBottom: '1px solid #2a3942', overflowX: 'auto' },
-    tabActive: { 
-        flex: 1, padding: '15px', color: '#00ffa3', border: 'none', borderBottom: '3px solid #00ffa3', 
-        backgroundColor: 'transparent', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', minWidth: '130px' 
-    },
-    tabInactive: { 
-        flex: 1, padding: '15px', color: '#8696a0', border: 'none', backgroundColor: 'transparent', 
-        cursor: 'pointer', fontSize: '11px', minWidth: '130px' 
-    },
+    tabActive: { flex: 1, padding: '15px', color: '#00ffa3', border: 'none', borderBottom: '3px solid #00ffa3', backgroundColor: 'transparent', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', minWidth: '130px' },
+    tabInactive: { flex: 1, padding: '15px', color: '#8696a0', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '11px', minWidth: '130px' },
     mainContent: { padding: '15px' },
-    searchInput: { 
-        width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#202c33', 
-        color: 'white', marginBottom: '15px', outline: 'none', boxSizing: 'border-box' 
-    },
+    searchInput: { width: '100%', padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#202c33', color: 'white', marginBottom: '15px', outline: 'none', boxSizing: 'border-box' },
     tableContainer: { backgroundColor: '#111b21', borderRadius: '10px', overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', minWidth: '950px' },
     th: { padding: '12px', textAlign: 'left', color: '#8696a0', backgroundColor: '#202c33', fontSize: '11px', textTransform: 'uppercase' },
     td: { padding: '12px', borderBottom: '1px solid #222d34', fontSize: '13px' },
     tr: { borderBottom: '1px solid #2a3942' },
-    opBadge: (isSalida) => ({ 
-        padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
-        backgroundColor: isSalida ? '#3d1a1a' : '#1a3d2e', 
-        color: isSalida ? '#ff5555' : '#00ffa3' 
-    }),
-    badge: { 
-        backgroundColor: '#2a3942', color: '#34b7f1', padding: '2px 8px', borderRadius: '10px', 
-        fontSize: '10px', display: 'inline-block', marginRight: '4px', marginBottom: '2px',
-        border: '1px solid #3b4a54'
-    }
+    opBadge: (isSalida) => ({ padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', backgroundColor: isSalida ? '#3d1a1a' : '#1a3d2e', color: isSalida ? '#ff5555' : '#00ffa3' }),
+    badge: { backgroundColor: '#2a3942', color: '#34b7f1', padding: '2px 8px', borderRadius: '10px', fontSize: '10px', display: 'inline-block', marginRight: '4px', marginBottom: '2px', border: '1px solid #3b4a54' }
 };
 
 export default InventoryPage;
