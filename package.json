@@ -18,7 +18,10 @@
     "react": "^18.2.0",
     "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.10.1"
+    "react-router-dom": "^7.10.1",
+    "xlsx": "^0.18.5",
+    "whatsapp-web.js": "^1.23.0",
+    "puppeteer": "^22.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",

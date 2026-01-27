@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QRCodeCanvas } from 'qrcode.react'; // Versión más estable para React
+import { QRCodeSVG } from 'qrcode.react'; // Cambiamos Canvas por SVG
 import axios from 'axios';
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -27,45 +27,70 @@ const QRGeneratorPage = () => {
     const handlePrint = () => {
         const printWindow = window.open('', '_blank');
         const content = document.getElementById('qr-print-area').innerHTML;
+        
+        // Agregamos estilos para que los SVG se vean bien en la impresión
         printWindow.document.write(`
             <html>
             <head>
+                <title>Imprimir QRs</title>
                 <style>
-                    body { display: flex; flex-wrap: wrap; gap: 20px; font-family: sans-serif; }
-                    .qr-card { border: 1px solid #000; padding: 10px; text-align: center; width: 120px; }
-                    canvas { width: 100px !important; height: 100px !important; }
+                    body { display: flex; flex-wrap: wrap; gap: 10mm; font-family: sans-serif; padding: 10mm; }
+                    .qr-card { 
+                        border: 1px solid #ccc; 
+                        padding: 10px; 
+                        text-align: center; 
+                        width: 40mm; 
+                        page-break-inside: avoid;
+                    }
+                    svg { width: 35mm !important; height: 35mm !important; }
+                    p { font-size: 10px; margin: 5px 0 0 0; word-break: break-all; }
                 </style>
             </head>
             <body>${content}</body>
             </html>
         `);
         printWindow.document.close();
-        printWindow.print();
+        
+        // Esperamos un momento a que el navegador procese el HTML antes de imprimir
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
     };
 
     return (
         <div style={{ padding: '20px', color: 'white', backgroundColor: '#0b141a', minHeight: '100vh' }}>
             <h1>📄 Generador de Etiquetas QR</h1>
-            <button onClick={handlePrint} style={st.btnPrimary}>🖨️ Imprimir Seleccionados ({selectedItems.length})</button>
+            <p style={{color: '#8696a0'}}>Selecciona los elementos que deseas imprimir:</p>
+            
+            <button 
+                onClick={handlePrint} 
+                style={st.btnPrimary}
+                disabled={selectedItems.length === 0}
+            >
+                🖨️ Imprimir Seleccionados ({selectedItems.length})
+            </button>
 
             <div style={st.grid}>
                 {items.map(item => (
                     <div key={item._id} 
                          onClick={() => toggleItem(item.qrCode)}
                          style={{...st.card, borderColor: selectedItems.includes(item.qrCode) ? '#00a884' : '#2a3942'}}>
-                        <QRCodeCanvas value={item.qrCode} size={80} bgColor="#ffffff" />
-                        <p style={{fontSize: '12px', marginTop: '5px'}}>{item.name}</p>
-                        <small>{item.qrCode}</small>
+                        {/* Usamos SVG aquí también */}
+                        <QRCodeSVG value={item.qrCode} size={80} bgColor="#ffffff" />
+                        <p style={{fontSize: '12px', marginTop: '8px', fontWeight: 'bold'}}>{item.name}</p>
+                        <small style={{color: '#8696a0'}}>{item.qrCode}</small>
                     </div>
                 ))}
             </div>
 
-            {/* Área oculta para captura de impresión */}
+            {/* Área de impresión (Invisible en la pantalla principal) */}
             <div id="qr-print-area" style={{ display: 'none' }}>
                 {items.filter(i => selectedItems.includes(i.qrCode)).map(item => (
                     <div className="qr-card" key={item._id}>
-                        <QRCodeCanvas value={item.qrCode} size={128} />
-                        <p>{item.name}</p>
+                        <QRCodeSVG value={item.qrCode} size={128} />
+                        <p><strong>{item.name}</strong></p>
+                        <p>{item.qrCode}</p>
                     </div>
                 ))}
             </div>
@@ -74,9 +99,18 @@ const QRGeneratorPage = () => {
 };
 
 const st = {
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '15px', marginTop: '20px' },
-    card: { backgroundColor: '#111b21', padding: '10px', borderRadius: '8px', border: '2px solid', cursor: 'pointer', textAlign: 'center' },
-    btnPrimary: { backgroundColor: '#00a884', color: 'white', border: 'none', padding: '12px 20px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px', marginTop: '20px' },
+    card: { backgroundColor: '#111b21', padding: '15px', borderRadius: '8px', border: '2px solid', cursor: 'pointer', textAlign: 'center', transition: '0.2s' },
+    btnPrimary: { 
+        backgroundColor: '#00a884', 
+        color: 'white', 
+        border: 'none', 
+        padding: '12px 25px', 
+        borderRadius: '25px', 
+        cursor: 'pointer', 
+        fontWeight: 'bold',
+        opacity: (props) => props.disabled ? 0.5 : 1 
+    }
 };
 
 export default QRGeneratorPage;

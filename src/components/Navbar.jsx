@@ -1,114 +1,244 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useAuth from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({ activeTab, setActiveTab }) => {
     const { user, isAdmin, isSuperAdmin, logout } = useAuth();
     const navigate = useNavigate();
-    const tienePermisosAdmin = isAdmin || isSuperAdmin;
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const cambiarVista = (tab, ruta) => {
         setActiveTab(tab);
         navigate(ruta);
+        setShowDropdown(false);
     };
 
-    const handleAuthAction = () => {
-        if (user) { 
-            logout(); 
-            navigate('/login'); 
-        } else { 
-            navigate('/login'); 
-        }
-    };
+    // LOGO DE BARCO FUTURISTA (SVG)
+    const ShipLogo = () => (
+        <svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#00ffa3" />
+                    <stop offset="100%" stopColor="#00a884" />
+                </linearGradient>
+            </defs>
+            <path d="M2 17L3 19H21L22 17V15H2V17Z" fill="url(#shipGrad)"/>
+            <path d="M5 15L6 9H11V15H5Z" fill="white" fillOpacity="0.7"/>
+            <path d="M12 15V11H15V15H12Z" fill="white" fillOpacity="0.9"/>
+            <path d="M1 21C5 22.5 8 20.5 12 21C16 21.5 19 22.5 23 21" stroke="#00ffa3" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+    );
 
     return (
-        <nav style={n.nav}>
-            <div style={n.scrollContainer} className="no-scrollbar">
-                {user && (
-                    <>
-                        {/* 1. Chat Registro (TransactionView / ChatPage) */}
-                        <button 
-                            onClick={() => cambiarVista('registro', '/registro')} 
-                            style={activeTab === 'registro' ? n.activeBtn : n.btn}
-                        >💬 Chat Registro</button>
+        <>
+            <style>{`
+                .nav-futuristic {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: rgba(8, 12, 14, 0.95); /* Un poco más sólido para que no se pierda el texto al hacer scroll */
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    padding: 0 40px;
+                    height: 85px;
+                    
+                    /* CONFIGURACIÓN STICKY */
+                    position: -webkit-sticky; /* Soporte para Safari */
+                    position: sticky; 
+                    top: 0; 
+                    z-index: 2000; /* Prioridad máxima sobre tablas y modales */
+                    
+                    /* Al ser sticky, NO necesita width 100% ni left 0 si está en un contenedor normal, 
+                    pero lo ponemos para asegurar */
+                    width: 100%;
+                    
+                    border-bottom: 1px solid rgba(0, 255, 163, 0.15);
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+                }
 
-                        {/* 2. Stock Actual (InventoryPage) */}
-                        <button 
-                            onClick={() => cambiarVista('inventario', '/inventario')} 
-                            style={activeTab === 'inventario' ? n.activeBtn : n.btn}
-                        >📦 Stock Actual</button>
+                /* LOGO A LA IZQUIERDA */
+                .brand-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    cursor: pointer;
+                }
+                .brand-text {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    background: linear-gradient(90deg, #fff, #8696a0);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                }
 
-                        {/* 3. Pagos */}
-                        <button 
-                            onClick={() => cambiarVista('pagos', '/pagos')} 
-                            style={activeTab === 'pagos' ? n.activeBtn : n.btn}
-                        >💰 Pagos</button>
+                /* NAVEGACIÓN CENTRAL */
+                .nav-center {
+                    display: flex;
+                    background: rgba(255, 255, 255, 0.03);
+                    padding: 6px;
+                    border-radius: 50px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                }
+                .nav-link {
+                    background: transparent;
+                    border: none;
+                    color: #8696a0;
+                    padding: 10px 22px;
+                    border-radius: 40px;
+                    cursor: pointer;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .nav-link:hover { color: #00ffa3; }
+                .nav-link.active {
+                    color: #00ffa3;
+                    background: rgba(0, 255, 163, 0.1);
+                    box-shadow: 0 0 15px rgba(0, 255, 163, 0.2);
+                }
 
-                        {/* 4. Asistencia */}
-                        <button 
-                            onClick={() => cambiarVista('asistencia', '/asistencia')} 
-                            style={activeTab === 'asistencia' ? n.activeBtn : n.btn}
-                        >🕒 Asistencia</button>
-                    </>
-                )}
+                /* PERFIL A LA DERECHA */
+                .profile-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    padding: 5px 5px 5px 20px;
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: 50px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    cursor: pointer;
+                    transition: 0.3s;
+                }
+                .profile-container:hover { border-color: #00ffa3; background: rgba(0, 255, 163, 0.05); }
 
-                {tienePermisosAdmin && (
-                    <>
-                        <button 
-                            onClick={() => cambiarVista('usuarios', '/trabajadores')} 
-                            style={activeTab === 'usuarios' ? n.activeBtn : n.btn}
-                        >👥 Personal</button>
-                        <button 
-                            onClick={() => cambiarVista('qr-gen', '/qr-generator')} 
-                            style={activeTab === 'qr-gen' ? n.activeBtn : n.btn}
-                        >📄 Generar QRs</button>
-                    </>
-                )}
-            </div>
+                .avatar-placeholder {
+                    width: 45px;
+                    height: 45px;
+                    border-radius: 50%;
+                    background: linear-gradient(45deg, #1c282f, #2a3942);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2px solid rgba(0, 255, 163, 0.3);
+                    font-size: 1.2rem;
+                    box-shadow: 0 0 10px rgba(0, 255, 163, 0.1);
+                }
 
-            <div style={n.userInfo}>
-                <span style={n.userName}>
-                    <strong>{user?.name}</strong> 
-                </span>
-                <div style={n.onlineDot}></div>
-                <button onClick={handleAuthAction} style={user ? n.logoutBtn : n.loginBtn}>
-                    {user ? `Salir 🚪` : 'Login 🔑'}
-                </button>
-            </div>
-        </nav>
+                .dropdown-menu {
+                    position: absolute;
+                    top: 95px;
+                    right: 40px;
+                    background: rgba(18, 26, 30, 0.95);
+                    backdrop-filter: blur(15px);
+                    border-radius: 20px;
+                    width: 250px;
+                    border: 1px solid rgba(0, 255, 163, 0.2);
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+                    overflow: hidden;
+                    animation: openDown 0.3s ease-out;
+                }
+
+                @keyframes openDown {
+                    from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+
+                .drop-item {
+                    width: 100%; padding: 15px 20px; border: none; background: transparent;
+                    color: #e9edef; text-align: left; cursor: pointer; display: flex;
+                    align-items: center; gap: 12px; font-size: 0.9rem; transition: 0.2s;
+                }
+                .drop-item:hover { background: rgba(0, 255, 163, 0.1); color: #00ffa3; }
+
+                /* RESPONSIVE */
+                @media (max-width: 1024px) {
+                    .nav-futuristic { padding: 0 20px; }
+                    .btn-text, .brand-text { display: none; }
+                    .nav-link { padding: 12px; font-size: 1.4rem; }
+                }
+            `}</style>
+
+            <nav className="nav-futuristic">
+                {/* IZQUIERDA: LOGO PERFECTO */}
+                <div className="brand-container" onClick={() => navigate('/inventario')}>
+                    <ShipLogo />
+                    <span className="brand-text">Servicios Industriales Gonzales</span>
+                </div>
+               
+                {/* CENTRO: NAVEGACIÓN */}
+                <div className="nav-center">
+                    {[
+                        { id: 'registro', path: '/registro', icon: '💬', label: 'Registro' },
+                        { id: 'inventario', path: '/inventario', icon: '📦', label: 'Inventario' },
+                        { id: 'asistencia', path: '/asistencia', icon: '🕒', label: 'Asistencia' },
+                        { id: 'usuarios', path: '/trabajadores', icon: '👥', label: 'Trabajadores' }
+                    ].map(item => (
+                        <button 
+                            key={item.id}
+                            onClick={() => cambiarVista(item.id, item.path)}
+                            className={`nav-link ${activeTab === item.id ? 'active' : ''}`}
+                        >
+                            <span>{item.icon}</span>
+                            <span className="btn-text">{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* DERECHA: PERFIL (PLACEHOLDER FOTO) */}
+                <div style={{ position: 'relative' }} ref={dropdownRef}>
+                    <div className="profile-container" onClick={() => setShowDropdown(!showDropdown)}>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>{user?.name?.split(' ')[0]}</div>
+                            <div style={{ color: '#00ffa3', fontSize: '10px', fontWeight: '800' }}>{user?.role?.toUpperCase()}</div>
+                        </div>
+                        <div className="avatar-placeholder">
+                            {/* Icono de usuario hasta que se suba foto real */}
+                            <span style={{ filter: 'grayscale(1)' }}>👤</span>
+                        </div>
+                    </div>
+
+                    {showDropdown && (
+                        <div className="dropdown-menu">
+                            <div style={{ padding: '20px', background: 'rgba(0, 255, 163, 0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize: '11px', color: '#8696a0' }}>ID DE USUARIO</div>
+                                <div style={{ fontSize: '13px', color: '#fff', fontWeight: 'bold' }}>{user?.email}</div>
+                            </div>
+                            
+                            {(isAdmin || isSuperAdmin) && (
+                                <div style={{ padding: '10px' }}>
+                                    
+                                     <button className="drop-item" onClick={() => cambiarVista('pagos', '/pagos')}>
+                                        💰 Pagos
+                                    </button>
+                                    <button className="drop-item" onClick={() => cambiarVista('qr-gen', '/qr-generator')}>
+                                        📄 Sistema QR
+                                    </button>
+                                </div>
+                            )}
+                            
+                            <button className="drop-item" style={{ color: '#ff5555', borderTop: '1px solid rgba(255,255,255,0.05)' }} onClick={() => { logout(); window.location.replace('/login'); }}>
+                                🚪 Cerrar Sesión
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </nav>
+        </>
     );
-};
-
-const n = {
-    nav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#202c33', padding: '5px 15px', borderBottom: '1px solid #2a3942', position: 'sticky', top: 0, zIndex: 1000 },
-    scrollContainer: { display: 'flex', gap: '5px', overflowX: 'auto', flex: 1 },
-    userInfo: { display: 'flex', alignItems: 'center', gap: '8px', paddingLeft:'8px' },
-    onlineDot: { width: '8px', height: '8px', backgroundColor: '#00a884', borderRadius: '50%' },
-    userName: { color: '#e9edef', fontSize: '13px', whiteSpace: 'nowrap' },
-    btn: { 
-        backgroundColor: 'transparent', 
-        border: 'none', 
-        color: '#8696a0', 
-        padding: '12px 12px', 
-        cursor: 'pointer', 
-        whiteSpace: 'nowrap', 
-        fontSize: '13px' 
-    },
-    activeBtn: { 
-        backgroundColor: 'transparent', 
-        borderTop: 'none',
-        borderLeft: 'none',
-        borderRight: 'none',
-        borderBottom: '3px solid #00a884', 
-        color: '#00a884', 
-        padding: '12px 12px', 
-        cursor: 'pointer', 
-        whiteSpace: 'nowrap', 
-        fontSize: '13px', 
-        fontWeight: 'bold' 
-    },
-    logoutBtn: { backgroundColor: 'transparent', border: '1px solid #ff4d4d', color: '#ff4d4d', padding: '5px 12px', borderRadius: '15px', cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' },
-    loginBtn: { backgroundColor: '#00a884', border: 'none', color: 'white', padding: '5px 15px', borderRadius: '15px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }
 };
 
 export default Navbar;

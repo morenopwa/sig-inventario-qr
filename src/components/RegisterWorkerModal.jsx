@@ -18,10 +18,10 @@ const RegisterWorkerModal = ({ onClose, onSuccess }) => {
         dni: '',
         phone: '',
         password: '',
-        mail: '',
-        nivelAcceso: 'Usuario', 
-        tipo: 'Externo',
-        rol: 'Calderero',
+        email: '',
+        accessLevel: 'Usuario', 
+        type: 'Externo',
+        role: 'Calderero',
         sueldoBase: '',
         tarifaDiaria: ''
     });
@@ -46,7 +46,7 @@ const RegisterWorkerModal = ({ onClose, onSuccess }) => {
             lastName: `${formData.lastName}`.trim(),
             dni: `${formData.dni}`.trim(),
             tipo: isWorker ? 'Trabajador' : 'Externo',
-            nivelAcceso: 'Usuario'
+            accessLevel: 'Usuario'
         };
 
         setLoading(true);

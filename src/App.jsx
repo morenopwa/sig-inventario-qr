@@ -6,37 +6,44 @@ import useAuth from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Páginas (Asegúrate de que los nombres de archivo coincidan)
+// Páginas
 import LoginPage from './pages/LoginPage';
-import ChatPage from './pages/ChatPage'; // Tu chat (antes TransactionView)
+import ChatPage from './pages/ChatPage';
 import InventoryPage from './pages/InventoryPage'; 
 import UserManagementPage from './pages/UserManagementPage';
 import QRGeneratorPage from './pages/QRGeneratorPage'; 
 import AttendancePage from './pages/AttendancePage';
 import PagosPage from './pages/PagosPage';
+import AdminPayrollPage from './components/AdminPayrollPage'; 
 
 function App() {
-  const { isAuthenticated } = useAuth();
-  
-  // Estado para refrescar el inventario cuando el chat registra algo
+  // 1. Extraemos 'loading' del hook
+  const { isAuthenticated, isSuperAdmin, isAdmin, loading } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const refreshInventory = () => setRefreshTrigger(prev => prev + 1);
-
-  // Estado para el botón activo en el Navbar
   const [activeTab, setActiveTab] = useState('registro');
+
+  // 2. Si el sistema está leyendo el localStorage, no renderizamos nada aún
+  // Esto evita que el router te mande al login por error un milisegundo
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', backgroundColor: '#0b141a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#00a884' }}>
+        Cargando sistema...
+      </div>
+    );
+  }
+
+  const refreshInventory = () => setRefreshTrigger(prev => prev + 1);
 
   return (
     <Router>
-      {/* El Navbar solo aparece si el usuario está logueado */}
       {isAuthenticated && (
         <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
       )}
       
       <Routes>
-        {/* Redirección inicial */}
         <Route 
           path="/" 
-          element={<Navigate to={isAuthenticated ? "/registro" : "/login"} replace />} 
+          element={isAuthenticated ? <Navigate to="/registro" replace /> : <Navigate to="/login" replace />} 
         />
         
         <Route 
@@ -44,33 +51,27 @@ function App() {
           element={!isAuthenticated ? <LoginPage /> : <Navigate to="/registro" replace />} 
         />
         
-        {/* RUTAS PROTEGIDAS */}
-        <Route element={<ProtectedRoute isAllowed={isAuthenticated} />}>
-          
-          {/* Registro Rápido (CHAT) */}
-          <Route 
-            path="/registro" 
-            element={<ChatPage onRefreshInventory={refreshInventory} />} 
-          />
-          
-          {/* Gestión de Stock y Préstamos (INVENTARIO) */}
-          <Route 
-            path="/inventario" 
-            element={<InventoryPage key={refreshTrigger} />} 
-          />
-
-          {/* Gestión de Personal */}
-          <Route path="/trabajadores" element={<UserManagementPage />} />
-          <Route path="/qr-generator" element={<QRGeneratorPage />} />
-          
-          {/* Asistencia y Pagos */}
+        <Route element={<ProtectedRoute isAllowed={isAuthenticated} redirectTo="/login" />}>
+          <Route path="/registro" element={<ChatPage onRefreshInventory={refreshInventory} />} />
+          <Route path="/inventario" element={<InventoryPage key={refreshTrigger} />} />
           <Route path="/asistencia" element={<AttendancePage />} />
           <Route path="/pagos" element={<PagosPage />} />
-          
         </Route>
 
-        {/* Si escriben cualquier otra cosa, al login */}
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route 
+          element={
+            <ProtectedRoute 
+              isAllowed={isAuthenticated && (isAdmin || isSuperAdmin)} 
+              redirectTo="/registro" 
+            />
+          }
+        >
+          <Route path="/trabajadores" element={<UserManagementPage />} />
+          <Route path="/qr-generator" element={<QRGeneratorPage />} />
+          <Route path="/planilla" element={<AdminPayrollPage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/registro" : "/login"} replace />} />
       </Routes>
     </Router>
   );

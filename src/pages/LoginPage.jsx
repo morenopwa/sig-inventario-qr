@@ -1,51 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuth from '../hooks/useAuth'; 
+import React, { useState } from 'react';
 import axios from 'axios';
+import useAuth from '../hooks/useAuth';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
 const LoginPage = () => {
-    const [lastName, setLastName] = useState(''); 
+    const [identifier, setIdentifier] = useState(''); 
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    
-    // Extraemos login y el objeto user de nuestro hook de auth
-    const { login, user } = useAuth(); 
-    const navigate = useNavigate();
+    const { login } = useAuth();
 
-    // EFECTO CORREGIDO: Solo redirige si hay un usuario logueado
-    useEffect(() => {
-        if (user) {
-            
-            navigate('/', { replace: true });
-        }
-    }, [user, navigate]);
-
-    const handleLogin = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (loading) return;
-
+        setError('');
         setLoading(true);
+
         try {
-            // IMPORTANTE: Verifica que el backend espere "name" y "password"
+            // URL corregida para evitar el 404
             const response = await axios.post(`${apiUrl}/api/users/login`, {
-                lastName: lastName.trim(),
-                password: password.trim()
+                username: identifier.trim(), 
+                password: password.trim(),
             });
 
             if (response.data.success) {
-                // Al llamar a login(user), el useEffect de arriba detectará el cambio y redirigirá
-                login(response.data.user); 
-            } else {
-                alert(`❌ ${response.data.message || 'Credenciales inválidas'}`);
+                login(response.data.user);
+                // No hace falta navigate(), App.jsx lo detectará por el cambio de estado
             }
-        } catch (error) {
-            console.error("Login Error:", error);
-            const msg = error.response?.status === 401 
-                ? "Nombre o password incorrectos" 
-                : "Error de conexión con el servidor";
-            alert(`❌ ${msg}`);
+        } catch (err) {
+            setError(err.response?.data?.message || "Error: No se pudo conectar con el servidor");
         } finally {
             setLoading(false);
         }
@@ -53,49 +36,37 @@ const LoginPage = () => {
 
     return (
         <div style={l.container}>
-            <div style={l.card}>
-                <h2 style={{color: '#00a884', marginBottom: '5px'}}>Bienvenido</h2>
-                <p style={{color: '#8696a0', fontSize: '14px', marginBottom: '25px'}}>Identifícate para continuar</p>
-                
-                <form onSubmit={handleLogin}>
-                    <div style={l.inputGroup}>
-                        <label style={l.label}>Usuario</label>
-                        <input
-                            style={l.input}
-                            type="text"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            placeholder="Tu Apellido"
-                            required
-                        />
-                    </div>
-                    <div style={l.inputGroup}>
-                        <label style={l.label}>Contraseña de Acceso</label>
-                        <input
-                            style={l.input}
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="****"
-                            required
-                        />
-                    </div>
-                    <button type="submit" style={l.btn} disabled={loading}>
-                        {loading ? 'Verificando...' : 'Entrar al Sistema'}
-                    </button>
-                </form>
-            </div>
+            <form onSubmit={handleSubmit} style={l.card}>
+                <h2 style={l.title}>S.I. GONZALES</h2>
+                <p style={l.subtitle}>Acceso al Sistema</p>
+                {error && <div style={l.error}>{error}</div>}
+                <div style={l.inputGroup}>
+                    <label style={l.label}>Nombre o Apellido:</label>
+                    <input type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="Ej: MORENO" required style={l.input} />
+                </div>
+                <div style={l.inputGroup}>
+                    <label style={l.label}>Contraseña (DNI):</label>
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="DNI" required style={l.input} />
+                </div>
+                <button type="submit" disabled={loading} style={loading ? l.btnDisabled : l.btn}>
+                    {loading ? 'Verificando...' : 'Ingresar'}
+                </button>
+            </form>
         </div>
     );
 };
 
 const l = {
-    container: { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b141a', padding: '20px' },
-    card: { backgroundColor: '#202c33', padding: '40px', borderRadius: '15px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' },
-    inputGroup: { textAlign: 'left', marginBottom: '15px' },
-    label: { color: '#00a884', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' },
-    input: { width: '100%', padding: '12px', marginTop: '5px', borderRadius: '8px', border: 'none', backgroundColor: '#2a3942', color: 'white', boxSizing: 'border-box', outline: 'none' },
-    btn: { width: '100%', padding: '15px', backgroundColor: '#00a884', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '10px', transition: '0.3s' }
+    container: { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b141a' },
+    card: { backgroundColor: '#111b21', padding: '40px', borderRadius: '15px', width: '320px', textAlign: 'center', border: '1px solid #2a3942' },
+    title: { color: '#00a884', margin: '0 0 5px 0', fontSize: '24px' },
+    subtitle: { color: '#8696a0', marginBottom: '25px', fontSize: '14px' },
+    inputGroup: { textAlign: 'left', marginBottom: '20px' },
+    label: { color: '#00a884', fontSize: '12px', display: 'block', marginBottom: '5px' },
+    input: { width: '100%', padding: '12px', boxSizing: 'border-box', backgroundColor: '#2a3942', border: 'none', borderRadius: '8px', color: 'white', outline: 'none' },
+    btn: { width: '100%', padding: '12px', backgroundColor: '#00a884', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
+    btnDisabled: { width: '100%', padding: '12px', backgroundColor: '#2a3942', color: '#8696a0', border: 'none', borderRadius: '8px', cursor: 'not-allowed' },
+    error: { backgroundColor: 'rgba(255,85,85,0.1)', color: '#ff5555', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '13px', border: '1px solid #ff5555' }
 };
 
 export default LoginPage;
