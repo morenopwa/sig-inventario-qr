@@ -1,155 +1,161 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import useAuth from '../hooks/useAuth'; 
-import { Send, Plus, Minus, Box, User as UserIcon, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Send, ChevronLeft, ChevronRight, Mic, MicOff } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 const ChatPage = ({ onRefreshInventory }) => {
     const { user } = useAuth(); 
     const [input, setInput] = useState('');
     const [logs, setLogs] = useState([]);
-    const [inventoryItems, setInventoryItems] = useState([]); 
     const [dbWorkers, setDbWorkers] = useState([]); 
-    const [isInputMode, setIsInputMode] = useState(false); 
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [isLoading, setIsLoading] = useState(false);
+    const [isListening, setIsListening] = useState(false);
     const chatEndRef = useRef(null);
     const apiUrl = import.meta.env.VITE_API_URL;
 
-    // Función Clasificadora para nuevos registros
-    const classifyCategory = (name) => {
-        if (!name) return 'CONSUMIBLES';
-        const n = name.toUpperCase();
-        const epp = ['LENTE','SOBRELENTE','MANDIL','ESCARPIN', 'GUANTE', 'CASCO', 'ZAPATO', 
-            'CHALECO', 'ARNES', 'MASCARILLA', 'TAPON', 'OREJERA', 
-            'RESPIRADOR', 'BOTAS', 'CONO','CAMISA','PANTALON','RESPIRADOR','BARBIQUEJO'];
-        const tools = ['MARTILLO', 'LLAVE', 'ALICATE', 'TALADRO', 'AMOLADORA', 'MAQUINA',
-            'SIERRA', 'ROTOMARTILLO', 'PALA', 'PICO', 'ANDAMIO', 'PUNTAL', 
-            'APUNTALAR','DESARMADOR','HUINCHA','REGLA','NIVEL','COMBA','CABLE'];
-        if (epp.some(p => n.includes(p))) return 'EPP';
-        if (tools.some(p => n.includes(p))) return 'Herramientas';
-        return 'Consumibles';
+    // --- MOTOR DE NORMALIZACIÓN (Singularización y Ortografía) ---
+    const normalizeText = (text) => {
+        let n = text.toLowerCase().trim();
+        
+        // Diccionario de correcciones específicas y plurales irregulares
+        const corrections = {
+            'wincha': 'huincha', 'winchas': 'huincha', 'huinchas': 'huincha',
+            'polifanes': 'polifan', 'polifans': 'polifan',
+            'micas': 'mica', 'guantes': 'guante', 'lentes': 'lente',
+            'discos': 'disco', 'brocas': 'broca', 'clavos': 'clavo',
+            'zapatos': 'zapato', 'botas': 'bota', 'cascos': 'casco'
+        };
+
+        const words = n.split(/\s+/).map(word => {
+            // 1. Verificación en diccionario
+            if (corrections[word]) return corrections[word];
+            // 2. Regla general de plurales (quitar 's' final si la palabra es larga)
+            if (word.endsWith('s') && word.length > 3) return word.slice(0, -1);
+            return word;
+        });
+        return words.join(' ').toUpperCase();
     };
 
-    const scrollToBottom = () => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const textToNumber = (text) => {
+        const numbers = {
+            'un': 1, 'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 
+            'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10
+        };
+        return numbers[text.toLowerCase()] || null;
+    };
+
+    const classifyCategory = (name) => {
+        const n = name.toUpperCase();
+        if (['LENTE', 'GUANTE', 'CASCO', 'ZAPATO', 'BOTA', 'MICA'].some(p => n.includes(p))) return 'EPP';
+        if (['MARTILLO', 'TALADRO', 'AMOLADORA', 'LLAVE', 'HUINCHA'].some(p => n.includes(p))) return 'HERRAMIENTAS';
+        return 'CONSUMIBLES';
     };
 
     const fetchData = useCallback(async () => {
-        setIsLoading(true);
         try {
-            const [txRes, invRes, userRes] = await Promise.all([
+            const [txRes, userRes] = await Promise.all([
                 axios.get(`${apiUrl}/api/transactions?date=${selectedDate}`),
-                axios.get(`${apiUrl}/api/inventory/items`),
                 axios.get(`${apiUrl}/api/users`)
             ]);
             setLogs(txRes.data || []);
-            setInventoryItems(invRes.data || []);
             setDbWorkers(userRes.data || []);
-            setTimeout(scrollToBottom, 100);
-        } catch (e) { console.error(e); }
-        finally { setIsLoading(false); }
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        } catch (e) { console.error("Error cargando datos", e); }
     }, [apiUrl, selectedDate]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
-    useEffect(() => { scrollToBottom(); }, [logs]);
 
-    const changeDate = (days) => {
-        const parts = selectedDate.split('-').map(Number);
-        const date = new Date(parts[0], parts[1] - 1, parts[2]);
-        date.setDate(date.getDate() + days);
-        setSelectedDate(format(date, 'yyyy-MM-dd'));
-    };
-
-    const handleShortcut = (text) => {
-        const words = input.trim().split(' ');
-        words.pop();
-        setInput([...words, text.toUpperCase()].join(' ').trim() + ' ');
-    };
-
-    // Función para formatear la hora sin desfase UTC (Igual que en Inventory)
-    const formatChatTime = (dateString) => {
-        if (!dateString) return "--:--";
-        try {
-            // Limpiamos 'Z' o milisegundos para tratarlo como hora local pura
-            const cleanDate = dateString.split('.')[0].replace('Z', '');
-            const date = parseISO(cleanDate);
-            return format(date, "HH:mm");
-        } catch (e) {
-            return "--:--";
-        }
-    };
-
+    // --- PROCESAMIENTO DE ENTRADA ---
     const processInput = async () => {
-        const rawText = input.trim();
-        if (!rawText) return;
+        let text = input.trim().toLowerCase();
+        if (!text) return;
 
-        const regex = /^([\d.]+)\s*([a-zA-Z]{1,3})?\s+(.+)$/i;
-        const match = rawText.match(regex);
-        let quantity = 1, manualUnit = null, remainder = rawText;
-        
-        if (match) {
-            quantity = parseFloat(match[1]);
-            manualUnit = match[2] ? match[2].toUpperCase() : null; 
-            remainder = match[3];
+        const words = text.split(/\s+/);
+        const unitsDict = ['kg', 'par', 'pares', 'und', 'unidad', 'mt', 'mts', 'bolsa'];
+
+        // 1. Cantidad
+        let quantity = 1;
+        let unit = 'UND';
+        let wordsToSkip = 0;
+
+        const firstWordAsNum = parseFloat(words[0]);
+        const firstWordAsText = textToNumber(words[0]);
+
+        if (!isNaN(firstWordAsNum)) { quantity = firstWordAsNum; wordsToSkip = 1; }
+        else if (firstWordAsText) { quantity = firstWordAsText; wordsToSkip = 1; }
+
+        if (words[wordsToSkip] && unitsDict.includes(words[wordsToSkip])) {
+            unit = words[wordsToSkip].toUpperCase();
+            wordsToSkip++;
         }
 
-        const words = remainder.split(/\s+/);
-        const currentUserLastName = user?.lastName ? user.lastName.split(' ')[0].toUpperCase() : "SISTEMA";
-        let personName = currentUserLastName; 
-        let itemName = remainder.toUpperCase();
+        // 2. Persona
+        let personName = user?.lastName ? user.lastName.split(' ')[0].toUpperCase() : "SISTEMA";
+        let detectedWorkerKey = "";
 
-        if (words.length > 1) {
-            const lastWord = words[words.length - 1].toUpperCase();
-            if (lastWord === 'SIMA') {
-                personName = 'SIMA';
-                itemName = words.slice(0, -1).join(' ').toUpperCase();
-            } else {
-                const workerFound = dbWorkers.find(w => w.lastName.toUpperCase().split(' ')[0] === lastWord);
-                if (workerFound) {
-                    personName = lastWord;
-                    itemName = words.slice(0, -1).join(' ').toUpperCase();
-                }
+        dbWorkers.forEach(w => {
+            const lastName = w.lastName.split(' ')[0].toLowerCase();
+            if (text.includes(lastName)) {
+                detectedWorkerKey = lastName;
+                personName = lastName.toUpperCase();
             }
-        }
+        });
+        if (text.includes('sima')) personName = 'SIMA';
 
-        // CORRECCIÓN DE HORA Y FECHA LOCAL PARA ENVÍO
-        const now = new Date();
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        const timestampLocal = `${selectedDate}T${hh}:${mm}:${ss}`;
+        // 3. Tipo (Prioridad Salida)
+        let type = (text.includes('ingreso') || text.includes('entro') || personName === 'SIMA') ? 'IN' : 'OUT';
+
+        // 4. Limpieza de Nombre de Producto
+        const finalWords = words.slice(wordsToSkip).filter(w => {
+            const isPerson = (detectedWorkerKey && w.includes(detectedWorkerKey)) || personName.toLowerCase().includes(w);
+            const isAction = ['para', 'de', 'se', 'un', 'una', 'el', 'la', 'con', 'en', 'lleva', 'llevan'].includes(w);
+            return !isPerson && !isAction && !unitsDict.includes(w);
+        });
+
+        const itemName = normalizeText(finalWords.join(' '));
+        if (!itemName) return alert("Producto no identificado");
+
+        const timestampLocal = `${selectedDate}T${format(new Date(), 'HH:mm:ss')}`;
 
         try {
             await axios.post(`${apiUrl}/api/transactions`, {
-                quantity, 
-                unit: manualUnit || 'UND', 
-                itemName, 
-                personName,
+                quantity, unit, itemName, personName,
                 category: classifyCategory(itemName),
-                type: personName === 'SIMA' ? 'IN' : (isInputMode ? 'IN' : 'OUT'),
-                timestamp: timestampLocal 
+                type, timestamp: timestampLocal
             });
             setInput('');
             fetchData();
-            if (onRefreshInventory) onRefreshInventory(); 
+            if (onRefreshInventory) onRefreshInventory();
+            new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
         } catch (e) { alert("Error al registrar"); }
     };
 
-    const lastWord = input.split(' ').pop().toLowerCase();
-    const filteredItems = input.trim() && lastWord.length > 1 ? inventoryItems.filter(i => i.name.toLowerCase().includes(lastWord)).slice(0, 4) : [];
-    const filteredWorkers = input.trim() && lastWord.length > 1 ? dbWorkers.filter(w => w.lastName.toLowerCase().includes(lastWord)).slice(0, 4) : [];
+    const handleVoice = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return alert("No compatible");
+        const rec = new SpeechRecognition();
+        rec.lang = 'es-PE';
+        rec.onstart = () => setIsListening(true);
+        rec.onend = () => setIsListening(false);
+        rec.onresult = (e) => setInput(e.results[0][0].transcript);
+        rec.start();
+    };
 
     return (
         <div style={s.container}>
             <div style={s.dateHeader}>
-                <button onClick={() => changeDate(-1)} style={s.dateNavBtn}><ChevronLeft size={24}/></button>
-                <div style={s.dateDisplay}>
-                    <Calendar size={16} style={{marginRight: '8px', color: '#00ffa3'}} />
-                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={s.dateInput} />
-                </div>
-                <button onClick={() => changeDate(1)} style={s.dateNavBtn}><ChevronRight size={24}/></button>
+                <button onClick={() => {
+                    const d = new Date(selectedDate + "T12:00:00");
+                    d.setDate(d.getDate() - 1);
+                    setSelectedDate(format(d, 'yyyy-MM-dd'));
+                }} style={s.dateNavBtn}><ChevronLeft/></button>
+                <input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} style={s.dateInput}/>
+                <button onClick={() => {
+                    const d = new Date(selectedDate + "T12:00:00");
+                    d.setDate(d.getDate() + 1);
+                    setSelectedDate(format(d, 'yyyy-MM-dd'));
+                }} style={s.dateNavBtn}><ChevronRight/></button>
             </div>
 
             <div style={s.chatArea}>
@@ -157,12 +163,10 @@ const ChatPage = ({ onRefreshInventory }) => {
                     <div key={i} style={s.bubbleWrap(log.type)}>
                         <div style={s.bubble(log.type)}>
                             <div style={s.bubbleRow}>
-                                <div style={s.typeIcon(log.type)}>{log.type === 'IN' ? '+' : '-'}</div>
-                                <span style={s.itemName}>{log.quantity} {log.unit !== 'UND' ? log.unit : ''} {log.itemName}</span>
+                                <span style={s.typeIcon(log.type)}>{log.type === 'IN' ? '↓' : '↑'}</span>
+                                <span style={s.itemName}>{log.quantity} {log.itemName}</span>
                                 <span style={s.personTag}>{log.personName}</span>
                             </div>
-                            {/* Cambio aquí: Usamos la nueva función formatChatTime */}
-                            <small style={s.time}>{formatChatTime(log.timestamp)}</small>
                         </div>
                     </div>
                 ))}
@@ -170,16 +174,13 @@ const ChatPage = ({ onRefreshInventory }) => {
             </div>
 
             <div style={s.controlPanel}>
-                {(filteredItems.length > 0 || filteredWorkers.length > 0) && (
-                    <div style={s.shortcutBar}>
-                        {filteredItems.map(i => <button key={i._id} onClick={() => handleShortcut(i.name)} style={s.itemBtn}><Box size={12}/> {i.name}</button>)}
-                        {filteredWorkers.map(w => <button key={w._id} onClick={() => handleShortcut(w.lastName.split(' ')[0])} style={s.workerBtn}><UserIcon size={12}/> {w.lastName.split(' ')[0]}</button>)}
-                    </div>
-                )}
                 <div style={s.inputRow}>
-                    <button onClick={() => setIsInputMode(!isInputMode)} style={s.modeBtn(isInputMode)}>{isInputMode ? <Plus/> : <Minus/>}</button>
-                    <input style={s.input} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && processInput()} placeholder="Escribe..." />
-                    <button onClick={processInput} style={s.sendBtn}><Send size={18}/></button>
+                    <button onClick={handleVoice} style={s.voiceBtn(isListening)}>
+                        <Mic size={20} color={isListening ? "white" : "#00ffa3"}/>
+                    </button>
+                    <input style={s.input} value={input} onChange={e=>setInput(e.target.value)} 
+                           onKeyDown={e=>e.key==='Enter' && processInput()} placeholder="Ej: 2 winchas mendoza"/>
+                    <button onClick={processInput} style={s.sendBtn}><Send size={18} color="white"/></button>
                 </div>
             </div>
         </div>
@@ -188,26 +189,21 @@ const ChatPage = ({ onRefreshInventory }) => {
 
 const s = {
     container: { display: 'flex', flexDirection: 'column', height: 'calc(100vh - 85px)', backgroundColor: '#0b141a' },
-    dateHeader: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px', backgroundColor: '#111b21', gap: '20px' },
+    dateHeader: { display: 'flex', justifyContent: 'center', padding: '10px', backgroundColor: '#111b21', gap: '10px' },
     dateNavBtn: { background: 'none', border: 'none', color: '#00ffa3', cursor: 'pointer' },
-    dateDisplay: { display: 'flex', alignItems: 'center', background: '#202c33', padding: '5px 15px', borderRadius: '20px' },
-    dateInput: { background: 'none', border: 'none', color: 'white', fontSize: '13px', outline: 'none' },
-    chatArea: { flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px' },
-    bubbleWrap: (type) => ({ alignSelf: type === 'IN' ? 'flex-start' : 'flex-end', maxWidth: '90%' }),
-    bubble: (type) => ({ backgroundColor: type === 'IN' ? '#202c33' : '#005c4b', padding: '10px', borderRadius: '12px' }),
-    bubbleRow: { display: 'flex', alignItems: 'center', gap: '10px' },
-    typeIcon: (type) => ({ color: type === 'IN' ? '#00ffa3' : '#ff5555', fontWeight: 'bold', fontSize: '18px' }),
-    itemName: { fontSize: '14px', color: 'white' },
-    personTag: { color: '#34b7f1', fontSize: '11px', fontWeight: 'bold', marginLeft: 'auto', backgroundColor: 'rgba(52, 183, 241, 0.1)', padding: '2px 6px', borderRadius: '5px' },
-    time: { fontSize: '9px', color: '#8696a0', textAlign: 'right', display: 'block', marginTop: '4px' },
-    controlPanel: { padding: '10px', backgroundColor: '#202c33' },
-    shortcutBar: { display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' },
-    itemBtn: { backgroundColor: '#3b4a54', color: 'white', border: 'none', borderRadius: '15px', padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' },
-    workerBtn: { border: '1px solid #34b7f1', color: '#34b7f1', background: 'none', borderRadius: '15px', padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' },
-    inputRow: { display: 'flex', gap: '8px' },
-    input: { flex: 1, backgroundColor: '#2a3942', border: 'none', borderRadius: '20px', padding: '10px 15px', color: 'white', outline: 'none' },
-    modeBtn: (isIN) => ({ width: '45px', height: '45px', borderRadius: '50%', border: 'none', backgroundColor: isIN ? '#00ffa3' : '#ff5555' }),
-    sendBtn: { width: '45px', height: '45px', borderRadius: '50%', border: 'none', backgroundColor: '#00a884', color: 'white' }
+    dateInput: { background: '#202c33', border: 'none', color: 'white', padding: '5px 10px', borderRadius: '10px' },
+    chatArea: { flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' },
+    bubbleWrap: (type) => ({ alignSelf: type === 'IN' ? 'flex-start' : 'flex-end', maxWidth: '85%' }),
+    bubble: (type) => ({ backgroundColor: type === 'IN' ? '#202c33' : '#005c4b', padding: '10px 15px', borderRadius: '12px' }),
+    bubbleRow: { display: 'flex', alignItems: 'center', gap: '8px' },
+    typeIcon: (type) => ({ color: type === 'IN' ? '#00ffa3' : '#34b7f1', fontWeight: 'bold' }),
+    itemName: { color: '#e9edef', fontSize: '14px', textTransform: 'uppercase' },
+    personTag: { color: '#00ffa3', fontSize: '10px', marginLeft: '10px', border: '1px solid #00ffa333', padding: '2px 4px' },
+    controlPanel: { padding: '15px', backgroundColor: '#111b21' },
+    inputRow: { display: 'flex', gap: '10px' },
+    voiceBtn: (a) => ({ width: '45px', height: '45px', borderRadius: '50%', border: 'none', backgroundColor: a ? '#ea4335' : '#2a3942' }),
+    input: { flex: 1, backgroundColor: '#2a3942', border: 'none', borderRadius: '25px', padding: '0 20px', color: 'white' },
+    sendBtn: { width: '45px', height: '45px', borderRadius: '50%', border: 'none', backgroundColor: '#00a884' }
 };
 
 export default ChatPage;

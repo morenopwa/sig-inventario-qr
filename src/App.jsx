@@ -16,62 +16,49 @@ import AttendancePage from './pages/AttendancePage';
 import PagosPage from './pages/PagosPage';
 import AdminPayrollPage from './components/AdminPayrollPage'; 
 
+// ... tus otros imports
+import UserPaymentsPage from './pages/UserPaymentsPage';
+import UserLoansPage from './pages/UserLoansPage';
+import UserQRPage from './pages/UserQRPage';
+
 function App() {
-  // 1. Extraemos 'loading' del hook
   const { isAuthenticated, isSuperAdmin, isAdmin, loading } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('registro');
+  const [activeTab, setActiveTab] = useState('mis-pagos'); // Cambiamos default si es worker
 
-  // 2. Si el sistema está leyendo el localStorage, no renderizamos nada aún
-  // Esto evita que el router te mande al login por error un milisegundo
-  if (loading) {
-    return (
-      <div style={{ height: '100vh', backgroundColor: '#0b141a', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#00a884' }}>
-        Cargando sistema...
-      </div>
-    );
-  }
-
-  const refreshInventory = () => setRefreshTrigger(prev => prev + 1);
+  if (loading) return <div className="loading-screen">Cargando sistema...</div>;
 
   return (
     <Router>
-      {isAuthenticated && (
-        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-      )}
+      {isAuthenticated && <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />}
       
       <Routes>
-        <Route 
-          path="/" 
-          element={isAuthenticated ? <Navigate to="/registro" replace /> : <Navigate to="/login" replace />} 
-        />
-        
-        <Route 
-          path="/login" 
-          element={!isAuthenticated ? <LoginPage /> : <Navigate to="/registro" replace />} 
-        />
-        
+        {/* Lógica de Redirección Inicial */}
+        <Route path="/" element={
+          isAuthenticated 
+            ? (isAdmin ? <Navigate to="/registro" /> : <Navigate to="/mis-pagos" />) 
+            : <Navigate to="/login" />
+        } />
+
+        <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
+
+        {/* RUTAS PARA TODOS LOS LOGUEADOS (Trabajadores y Admins) */}
         <Route element={<ProtectedRoute isAllowed={isAuthenticated} redirectTo="/login" />}>
-          <Route path="/registro" element={<ChatPage onRefreshInventory={refreshInventory} />} />
+          <Route path="/mis-pagos" element={<UserPaymentsPage />} />
+          <Route path="/mis-prestamos" element={<UserLoansPage />} />
+          <Route path="/mi-qr" element={<UserQRPage />} />
+        </Route>
+
+        {/* RUTAS SOLO PARA ADMINS */}
+        <Route element={<ProtectedRoute isAllowed={isAuthenticated && (isAdmin || isSuperAdmin)} redirectTo="/mis-pagos" />}>
+          <Route path="/registro" element={<ChatPage onRefreshInventory={() => setRefreshTrigger(t => t+1)} />} />
           <Route path="/inventario" element={<InventoryPage key={refreshTrigger} />} />
           <Route path="/asistencia" element={<AttendancePage />} />
           <Route path="/pagos" element={<PagosPage />} />
-        </Route>
-
-        <Route 
-          element={
-            <ProtectedRoute 
-              isAllowed={isAuthenticated && (isAdmin || isSuperAdmin)} 
-              redirectTo="/registro" 
-            />
-          }
-        >
           <Route path="/trabajadores" element={<UserManagementPage />} />
           <Route path="/qr-generator" element={<QRGeneratorPage />} />
           <Route path="/planilla" element={<AdminPayrollPage />} />
         </Route>
-
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/registro" : "/login"} replace />} />
       </Routes>
     </Router>
   );

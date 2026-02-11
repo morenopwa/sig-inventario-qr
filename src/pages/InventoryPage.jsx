@@ -46,26 +46,31 @@ const InventoryPage = () => {
         };
     };
 
-    // --- LÓGICA PARA LA PESTAÑA DE PRÉSTAMOS ---
-    const loansByWorker = useMemo(() => {
-        const workers = {};
-        items.forEach(item => {
-            if (item.activeLoans && item.activeLoans.length > 0) {
-                item.activeLoans.forEach(loan => {
-                    if (loan.quantity > 0) {
-                        if (!workers[loan.workerName]) workers[loan.workerName] = [];
-                        workers[loan.workerName].push({
-                            ...loan,
-                            itemName: item.name,
-                            unit: item.unit,
-                            itemId: item._id
-                        });
-                    }
-                });
-            }
-        });
-        return workers;
-    }, [items]);
+const loansByWorker = useMemo(() => {
+    const workers = {};
+    items.forEach(item => {
+        // 1. Determinar categoría para filtrar
+        const category = item.category && item.category !== 'General' 
+            ? item.category 
+            : classifyCategory(item.name);
+
+        // 2. Solo procesar si NO es consumible
+        if (category !== 'Consumibles' && item.activeLoans && item.activeLoans.length > 0) {
+            item.activeLoans.forEach(loan => {
+                if (loan.quantity > 0) {
+                    if (!workers[loan.workerName]) workers[loan.workerName] = [];
+                    workers[loan.workerName].push({
+                        ...loan,
+                        itemName: item.name,
+                        unit: item.unit,
+                        itemId: item._id
+                    });
+                }
+            });
+        }
+    });
+    return workers;
+}, [items]);
 
     const filteredData = useMemo(() => {
         const search = searchTerm.toLowerCase();

@@ -255,7 +255,7 @@ const st = {
     dateInput: { 
         padding: '10px 15px', borderRadius: '10px', border: '2px solid #00ffa3', 
         backgroundColor: '#202c33', color: 'white', outline: 'none', 
-        fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' 
+        fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'
     },
     
     buttonGroup: { display: 'flex', gap: '12px' },
