@@ -24,7 +24,7 @@ import UserQRPage from './pages/UserQRPage';
 function App() {
   const { isAuthenticated, isSuperAdmin, isAdmin, loading } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('mis-pagos'); // Cambiamos default si es worker
+  const [activeTab, setActiveTab] = useState('mis-pagos');
 
   if (loading) return <div className="loading-screen">Cargando sistema...</div>;
 
@@ -42,7 +42,7 @@ function App() {
 
         <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/" />} />
 
-        {/* RUTAS PARA TODOS LOS LOGUEADOS (Trabajadores y Admins) */}
+        {/* RUTAS PARA TODOS LOS LOGUEADOS */}
         <Route element={<ProtectedRoute isAllowed={isAuthenticated} redirectTo="/login" />}>
           <Route path="/mis-pagos" element={<UserPaymentsPage />} />
           <Route path="/mis-prestamos" element={<UserLoansPage />} />
@@ -58,6 +58,9 @@ function App() {
           <Route path="/trabajadores" element={<UserManagementPage />} />
           <Route path="/qr-generator" element={<QRGeneratorPage />} />
           <Route path="/planilla" element={<AdminPayrollPage />} />
+          
+          {/* NUEVA RUTA: Permite al admin ver la planilla detallada de un trabajador por ID */}
+          <Route path="/planilla/:id" element={<UserPaymentsPage />} />
         </Route>
       </Routes>
     </Router>

@@ -53,9 +53,7 @@ const UserQRPage = () => {
                 </div>
             </div>
 
-            <button style={styles.btnDownload} onClick={handlePrint}>
-                <Download size={18} /> Imprimir / Guardar Fotocheck
-            </button>
+           
         </div>
     );
 };

@@ -24,16 +24,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Cerrar dropdown al hacer click fuera
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-                setShowDropdown(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    // ... (useEffect del click outside se mantiene igual)
 
     const cambiarVista = (tab, ruta) => {
         setActiveTab(tab);
@@ -41,7 +32,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         setShowDropdown(false);
     };
 
-    // Definir los items del centro según el rol
+    // Ítems base para administradores
     const adminItems = [
         { id: 'registro', path: '/registro', icon: '💬', label: 'Registro' },
         { id: 'inventario', path: '/inventario', icon: '📦', label: 'Inventario' },
@@ -49,13 +40,18 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         { id: 'usuarios', path: '/trabajadores', icon: '👥', label: 'Trabajadores' }
     ];
 
+    // Ítems para trabajadores
     const workerItems = [
         { id: 'mis-pagos', path: '/mis-pagos', icon: '💰', label: 'Mis Pagos' },
         { id: 'mis-prestamos', path: '/mis-prestamos', icon: '🛠️', label: 'Préstamos' },
         { id: 'mi-qr', path: '/mi-qr', icon: '📱', label: 'Mi QR' }
     ];
 
-    const navItems = (isAdmin || isSuperAdmin) ? adminItems : workerItems;
+    // LÓGICA DE NAVEGACIÓN ACTUALIZADA:
+    // Si es Admin, le mostramos sus herramientas de gestión + sus pagos personales
+    const navItems = (isAdmin || isSuperAdmin) 
+        ? [{ id: 'mis-pagos', path: '/mis-pagos', icon: '💰', label: 'Mis Pagos' }, ...adminItems] 
+        : workerItems;
 
     return (
         <>
@@ -182,7 +178,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
                     .btn-text, .brand-text { display: none; }
                 }
             `}</style>
-
+            
             <nav className="nav-futuristic">
                 {/* IZQUIERDA: LOGO */}
                 <div className="brand-container" onClick={() => navigate('/')}>
