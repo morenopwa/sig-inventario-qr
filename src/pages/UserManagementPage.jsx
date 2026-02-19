@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import useAuth from '../hooks/useAuth'; 
-import qrcodeLib from 'qrcode'; // Seguiremos usando esta pero solo para strings SVG
+import qrcodeLib from 'qrcode'; 
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -10,7 +10,7 @@ const ALLOWED_ROLES = [
     'Maniobrista', 'Residente', 'Prevencionista', 'Gestion'
 ];
 
-// Estilos del Fotocheck
+// Estilos del Fotocheck para impresión
 const FOTOCHECK_STYLES = `
     @media print {
         @page { size: A4; margin: 1cm; }
@@ -26,6 +26,7 @@ const FOTOCHECK_STYLES = `
         page-break-inside: avoid;
         display: inline-block;
         vertical-align: top;
+        margin-bottom: 10px;
     }
     .header { background: #00a884 !important; color: white; height: 1.5cm; text-align: center; padding-top: 5px; -webkit-print-color-adjust: exact; }
     .logo-txt { font-weight: bold; font-size: 14px; }
@@ -110,7 +111,6 @@ function QRPrintModal({ isOpen, user, onClose }) {
 // 👥 Componente Principal
 // ---------------------------------------------------
 const UserManagementPage = () => {
-    // CORRECCIÓN: Usar los permisos del hook que detectan 'accessLevel'
     const { isAdmin, isSuperAdmin } = useAuth();
     const tienePermisoEscritura = isAdmin || isSuperAdmin; 
     
@@ -122,6 +122,9 @@ const UserManagementPage = () => {
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [isWorker, setIsWorker] = useState(true);
+
+    // NUEVO ESTADO PARA SELECCIÓN
+    const [selectedUserIds, setSelectedUserIds] = useState([]);
 
     const [formData, setFormData] = useState({
         name: '', lastName: '', dni: '', phone: '', mail: '', role: '', accessLevel: 'Usuario', type: 'Trabajador'
@@ -143,14 +146,29 @@ const UserManagementPage = () => {
         u.dni?.includes(searchTerm)
     );
 
-    const handlePrintAllQR = async () => {
-        const workers = users.filter(u => u.type === 'Trabajador');
-        if (workers.length === 0) return alert("No hay trabajadores.");
+    // LÓGICA DE SELECCIÓN
+    const toggleSelectUser = (id) => {
+        setSelectedUserIds(prev => 
+            prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0) {
+            setSelectedUserIds([]);
+        } else {
+            setSelectedUserIds(filteredUsers.map(u => u._id));
+        }
+    };
+
+    const handlePrintSelectedQR = async () => {
+        const usersToPrint = users.filter(u => selectedUserIds.includes(u._id));
+        if (usersToPrint.length === 0) return alert("Por favor, selecciona al menos un usuario de la lista.");
 
         const printWindow = window.open('', '_blank');
         let html = `<html><head><style>${FOTOCHECK_STYLES}</style></head><body><div class="card-container">`;
 
-        for (const u of workers) {
+        for (const u of usersToPrint) {
             const svg = await qrcodeLib.toString(u.customId || u.dni, { type: 'svg', margin: 1 });
             html += `
                 <div class="card">
@@ -163,7 +181,7 @@ const UserManagementPage = () => {
                         <div class="qr-container">${svg}</div>
                         <div style="font-size: 9px; color: #666;">DNI: ${u.dni}</div>
                     </div>
-                    <div class="footer-role">${u.role || 'TRABAJADOR'}</div>
+                    <div class="footer-role">${u.role || u.type || 'TRABAJADOR'}</div>
                 </div>`;
         }
 
@@ -204,15 +222,11 @@ const UserManagementPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // LÓGICA DE PRIMER APELLIDO:
-            // Tomamos el primer apellido, lo limpiamos y lo pasamos a minúsculas
             const primerApellido = formData.lastName.trim().split(' ')[0].toLowerCase();
-
             const data = {
                 ...formData, 
-                username: primerApellido, // El usuario será el primer apellido
+                username: primerApellido, 
                 type: isWorker ? 'Trabajador' : formData.type, 
-                // Al crear, la clave es el DNI. Al editar, no se envía password para no sobreescribirla
                 password: isEditMode ? undefined : formData.dni.trim() 
             };
 
@@ -234,7 +248,7 @@ const UserManagementPage = () => {
         setFormData({ 
             name: u.name, lastName: u.lastName, dni: u.dni, 
             phone: u.phone || '', mail: u.mail || '', role: u.role || '', 
-            accessLevel: u.accessLevel || 'Usuario', // CORRECCIÓN: accessLevel
+            accessLevel: u.accessLevel || 'Usuario', 
             type: u.type || 'Trabajador' 
         });
         setSelectedId(u._id); 
@@ -249,7 +263,6 @@ const UserManagementPage = () => {
         setFormData({ name: '', lastName: '', dni: '', phone: '', mail: '', role: '', accessLevel: 'Usuario', type: 'Trabajador' });
     };
 
-    // Validamos acceso
     if (!tienePermisoEscritura) return <div style={st.denied}>🚫 Acceso Denegado</div>;
 
     return (
@@ -258,8 +271,18 @@ const UserManagementPage = () => {
                 <h1 style={st.title}>Gestión Personal 👥</h1>
                 <div style={st.actions}>
                     <input placeholder="Buscar por nombre o DNI..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={st.searchInput}/>
-                    <button onClick={() => setIsRegisterModalOpen(true)} style={st.btnPrimary}>➕</button>
-                    <button onClick={handlePrintAllQR} style={st.btnSecondary}>🖨️ Masivo</button>
+                    <button onClick={() => setIsRegisterModalOpen(true)} style={st.btnPrimary} title="Nuevo Usuario">➕</button>
+                    <button 
+                        onClick={handlePrintSelectedQR} 
+                        style={{
+                            ...st.btnSecondary,
+                            backgroundColor: selectedUserIds.length > 0 ? '#00ffa3' : '#3b4a54',
+                            color: selectedUserIds.length > 0 ? '#0b141a' : 'white',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        🖨️ Imprimir Seleccionados ({selectedUserIds.length})
+                    </button>
                 </div>
             </header>
 
@@ -267,6 +290,13 @@ const UserManagementPage = () => {
                 <table style={st.table}>
                     <thead>
                         <tr>
+                            <th style={{...st.th, width: '40px'}}>
+                                <input 
+                                    type="checkbox" 
+                                    onChange={toggleSelectAll}
+                                    checked={filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length}
+                                />
+                            </th>
                             <th style={st.th}>Apellidos y Nombres</th>
                             <th style={st.th}>DNI</th>
                             <th style={st.th}>Sueldo/Hr</th> 
@@ -276,7 +306,17 @@ const UserManagementPage = () => {
                     </thead>
                     <tbody>
                         {filteredUsers.map(u => (
-                            <tr key={u._id} style={st.tr}>
+                            <tr key={u._id} style={{
+                                ...st.tr,
+                                backgroundColor: selectedUserIds.includes(u._id) ? 'rgba(0, 255, 163, 0.05)' : 'transparent'
+                            }}>
+                                <td style={st.td}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedUserIds.includes(u._id)}
+                                        onChange={() => toggleSelectUser(u._id)}
+                                    />
+                                </td>
                                 <td style={st.td}>{u.lastName}, {u.name}</td>
                                 <td style={st.td}>{u.dni}</td>
                                 <td style={{...st.td, color: '#00a884', fontWeight: 'bold'}}>S/ {u.hourlyRate || 0}</td>
@@ -284,8 +324,8 @@ const UserManagementPage = () => {
                                 <td style={st.tdActions}>
                                     <button onClick={() => handleEdit(u)} style={st.btnEdit}>✏️</button>
                                     <button onClick={() => updateRate(u._id, u.name)} style={st.btnMoney} title="Ajustar Pago">💰</button>
-                                    <button onClick={() => { setSelectedUser(u); setIsQRModalOpen(true); }} style={st.btnIcon}>🪪</button>
-                                    <button onClick={() => handleDelete(u._id, u.name)} style={st.btnDelete}>🗑️</button>
+                                    <button onClick={() => { setSelectedUser(u); setIsQRModalOpen(true); }} style={st.btnIcon} title="Ver QR">🪪</button>
+                                    <button onClick={() => handleDelete(u._id, u.name)} style={st.btnDelete} title="Eliminar">🗑️</button>
                                 </td>
                             </tr>
                         ))}
@@ -319,7 +359,6 @@ const UserManagementPage = () => {
                                 </select>
                             )}
 
-                            {/* Campo de Nivel de Acceso para Admins */}
                             <select style={st.input} value={formData.accessLevel} onChange={e=>setFormData({...formData, accessLevel: e.target.value})}>
                                 <option value="Usuario">Usuario (Solo consulta)</option>
                                 <option value="Admin">Admin (Gestión completa)</option>
