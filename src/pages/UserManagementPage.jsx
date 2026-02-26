@@ -122,12 +122,12 @@ const UserManagementPage = () => {
     const [isQRModalOpen, setIsQRModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [isWorker, setIsWorker] = useState(true);
-
-    // NUEVO ESTADO PARA SELECCIÓN
     const [selectedUserIds, setSelectedUserIds] = useState([]);
 
+    // Formulario con el campo 'additionalDaily' (Cena/Almuerzo/Pasaje)
     const [formData, setFormData] = useState({
-        name: '', lastName: '', dni: '', phone: '', mail: '', role: '', accessLevel: 'Usuario', type: 'Trabajador'
+        name: '', lastName: '', dni: '', phone: '', mail: '', role: '', 
+        accessLevel: 'Usuario', type: 'Trabajador', additionalDaily: 0
     });
 
     const fetchUsers = useCallback(async () => {
@@ -146,7 +146,6 @@ const UserManagementPage = () => {
         u.dni?.includes(searchTerm)
     );
 
-    // LÓGICA DE SELECCIÓN
     const toggleSelectUser = (id) => {
         setSelectedUserIds(prev => 
             prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
@@ -227,7 +226,8 @@ const UserManagementPage = () => {
                 ...formData, 
                 username: primerApellido, 
                 type: isWorker ? 'Trabajador' : formData.type, 
-                password: isEditMode ? undefined : formData.dni.trim() 
+                password: isEditMode ? undefined : formData.dni.trim(),
+                additionalDaily: parseFloat(formData.additionalDaily) || 0
             };
 
             if (isEditMode) {
@@ -249,7 +249,8 @@ const UserManagementPage = () => {
             name: u.name, lastName: u.lastName, dni: u.dni, 
             phone: u.phone || '', mail: u.mail || '', role: u.role || '', 
             accessLevel: u.accessLevel || 'Usuario', 
-            type: u.type || 'Trabajador' 
+            type: u.type || 'Trabajador',
+            additionalDaily: u.additionalDaily || 0
         });
         setSelectedId(u._id); 
         setIsWorker(u.type === 'Trabajador');
@@ -260,7 +261,7 @@ const UserManagementPage = () => {
     const closeModal = () => {
         setIsRegisterModalOpen(false); 
         setIsEditMode(false);
-        setFormData({ name: '', lastName: '', dni: '', phone: '', mail: '', role: '', accessLevel: 'Usuario', type: 'Trabajador' });
+        setFormData({ name: '', lastName: '', dni: '', phone: '', mail: '', role: '', accessLevel: 'Usuario', type: 'Trabajador', additionalDaily: 0 });
     };
 
     if (!tienePermisoEscritura) return <div style={st.denied}>🚫 Acceso Denegado</div>;
@@ -300,6 +301,7 @@ const UserManagementPage = () => {
                             <th style={st.th}>Apellidos y Nombres</th>
                             <th style={st.th}>DNI</th>
                             <th style={st.th}>Sueldo/Hr</th> 
+                            <th style={st.th}>Adic. Diario</th> 
                             <th style={st.th}>Rol / Tipo</th>
                             <th style={st.th}>Acciones</th>
                         </tr>
@@ -319,7 +321,8 @@ const UserManagementPage = () => {
                                 </td>
                                 <td style={st.td}>{u.lastName}, {u.name}</td>
                                 <td style={st.td}>{u.dni}</td>
-                                <td style={{...st.td, color: '#00a884', fontWeight: 'bold'}}>S/ {u.hourlyRate || 0}</td>
+                                <td style={{...st.td, color: '#00ffa3', fontWeight: 'bold'}}>S/ {u.hourlyRate || 0}</td>
+                                <td style={{...st.td, color: '#4fc3f7'}}>S/ {u.additionalDaily || 0}</td>
                                 <td style={st.td}><span style={st.badge}>{u.role || u.type}</span></td>
                                 <td style={st.tdActions}>
                                     <button onClick={() => handleEdit(u)} style={st.btnEdit}>✏️</button>
@@ -342,6 +345,18 @@ const UserManagementPage = () => {
                             <input placeholder="Apellidos" value={formData.lastName} required onChange={e=>setFormData({...formData, lastName: e.target.value})} style={st.input}/>
                             <input placeholder="DNI" value={formData.dni} required onChange={e=>setFormData({...formData, dni: e.target.value})} style={st.input}/>
                             
+                            <div style={{padding: '10px', background: '#2a3942', borderRadius: '8px', border: '1px solid #00ffa344'}}>
+                                <label style={{fontSize: '11px', color: '#00ffa3', display: 'block', marginBottom: '5px'}}>Monto Adicional Diario (Almuerzo/Pasajes)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.01"
+                                    placeholder="Ej: 15.00" 
+                                    value={formData.additionalDaily} 
+                                    onChange={e=>setFormData({...formData, additionalDaily: e.target.value})} 
+                                    style={{...st.input, width: '100%', boxSizing: 'border-box'}}
+                                />
+                            </div>
+
                             <label style={{color: '#8696a0', fontSize:'13px', display: 'flex', alignItems: 'center', gap: '8px'}}>
                                 <input type="checkbox" checked={isWorker} onChange={e=>setIsWorker(e.target.checked)}/> 
                                 ¿Es trabajador de obra?

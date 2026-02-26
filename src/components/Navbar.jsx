@@ -40,19 +40,31 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         setShowDropdown(false);
     };
 
-    // Configuración de ítems
+    // --- CONFIGURACIÓN DE ÍTEMS DE NAVEGACIÓN ---
+    
+    // 1. Ítems que ven absolutamente TODOS
     const commonItems = [
-        { id: 'mis-pagos', path: '/mis-pagos', icon: '💰', label: 'Pagos' },
-        { id: 'mi-qr', path: '/mi-qr', icon: '📱', label: 'Mi QR' }
+        { 
+            id: 'asistencia', 
+            path: '/asistencia', 
+            icon: '🕒', 
+            label: (isAdmin || isSuperAdmin) ? 'Asistencia' : 'Mi Agenda' // Nombre amigable para el trabajador
+        },
+        { id: 'mis-pagos', path: '/mis-pagos', icon: '💰', label: 'Mis Pagos' },
+        { id: 'mis-prestamos', path: '/mis-prestamos', icon: '💸', label: 'Mis Préstamos' },
     ];
 
+    // 2. Ítems exclusivos para Administración
     const adminItems = [
         { id: 'registro', path: '/registro', icon: '💬', label: 'Chat' },
         { id: 'inventario', path: '/inventario', icon: '📦', label: 'Stock' },
-        { id: 'asistencia', path: '/asistencia', icon: '🕒', label: 'Asistencia' }
+        { id: 'trabajadores', path: '/trabajadores', icon: '👥', label: 'Trabajadores' }
     ];
 
-    const navItems = (isAdmin || isSuperAdmin) ? [...commonItems, ...adminItems] : [...commonItems];
+    // 3. Combinar según rol: Los admins ven las herramientas de gestión al principio
+    const navItems = (isAdmin || isSuperAdmin) 
+        ? [...adminItems, ...commonItems] 
+        : [...commonItems];
 
     return (
         <>
@@ -66,13 +78,14 @@ const Navbar = ({ activeTab, setActiveTab }) => {
                     padding: 0 40px; height: 80px; box-sizing: border-box;
                 }
 
-                .nav-center { display: flex; gap: 8px; background: rgba(255, 255, 255, 0.03); padding: 5px; border-radius: 50px; }
+                .nav-center { display: flex; gap: 5px; background: rgba(255, 255, 255, 0.03); padding: 5px; border-radius: 50px; overflow-x: auto; max-width: 70%; }
+                .nav-center::-webkit-scrollbar { display: none; }
 
                 .nav-link {
                     background: transparent; border: none; color: #8696a0;
-                    padding: 10px 18px; border-radius: 40px; cursor: pointer;
+                    padding: 10px 16px; border-radius: 40px; cursor: pointer;
                     display: flex; align-items: center; gap: 8px; font-weight: 600;
-                    transition: 0.3s; font-size: 0.9rem;
+                    transition: 0.3s; font-size: 0.85rem; white-space: nowrap;
                 }
 
                 .nav-link.active { color: #00ffa3; background: rgba(0, 255, 163, 0.1); }
@@ -91,58 +104,84 @@ const Navbar = ({ activeTab, setActiveTab }) => {
 
                 .drop-item {
                     width: 100%; padding: 12px 20px; border: none; background: transparent;
-                    color: #fff; text-align: left; cursor: pointer; transition: 0.2s;
+                    color: #fff; text-align: left; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px;
                 }
                 .drop-item:hover { background: rgba(0, 255, 163, 0.1); color: #00ffa3; }
 
-                /* RESPONSIVE MÓVIL (Bottom Nav) */
+                @media (max-width: 1024px) {
+                    .btn-text { display: none; }
+                    .nav-link { padding: 10px; }
+                }
+
                 @media (max-width: 768px) {
-                    .nav-container { padding: 0 20px; height: 70px; }
-                    .brand-text, .btn-text, .user-info-text { display: none; }
+                    .nav-container { padding: 0 15px; height: 70px; }
+                    .brand-text, .user-info-text { display: none; }
                     
                     .nav-center {
-                        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-                        width: 90%; justify-content: space-around; padding: 10px;
-                        background: rgba(18, 26, 30, 0.95); border: 1px solid #00ffa333;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+                        position: fixed; bottom: 0; left: 0; transform: none;
+                        width: 100%; justify-content: space-around; padding: 10px 5px;
+                        background: #0b141a; border-top: 1px solid #00ffa333;
+                        border-radius: 0; max-width: 100%; z-index: 2001;
+                        padding-bottom: env(safe-area-inset-bottom);
                     }
-                    .nav-link { padding: 12px; }
-                    .nav-link span { font-size: 1.4rem; }
-                    .dropdown-menu { right: 20px; top: 75px; }
+                    .nav-link { flex-direction: column; gap: 2px; font-size: 0.7rem; }
+                    .nav-link span { font-size: 1.2rem; }
+                    .dropdown-menu { right: 15px; top: 65px; }
                 }
             `}</style>
 
             <nav className="nav-container">
+                {/* LADO IZQUIERDO: LOGO */}
                 <div style={{display:'flex', alignItems:'center', gap:'10px', cursor:'pointer'}} onClick={() => navigate('/')}>
                     <ShipLogo />
-                    <b className="brand-text" style={{letterSpacing:'2px', color:'#fff'}}>SIG</b>
+                    <b className="brand-text" style={{letterSpacing:'2px', color:'#fff', fontSize: '1.2rem'}}>SIG</b>
                 </div>
 
+                {/* CENTRO: NAVEGACIÓN DINÁMICA */}
                 <div className="nav-center">
                     {navItems.map(item => (
-                        <button key={item.id} onClick={() => cambiarVista(item.id, item.path)} className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}>
+                        <button 
+                            key={item.id} 
+                            onClick={() => cambiarVista(item.id, item.path)} 
+                            className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                        >
                             <span>{item.icon}</span>
                             <span className="btn-text">{item.label}</span>
                         </button>
                     ))}
                 </div>
 
+                {/* LADO DERECHO: PERFIL Y DROPDOWN */}
                 <div style={{position:'relative'}} ref={dropdownRef}>
                     <div className="profile-box" onClick={() => setShowDropdown(!showDropdown)}>
                         <div className="user-info-text" style={{textAlign:'right'}}>
                             <div style={{fontSize:'12px', fontWeight:'bold', color:'#fff'}}>{user?.name}</div>
                             <div style={{fontSize:'9px', color:'#00ffa3', fontWeight:'800'}}>{user?.role?.toUpperCase()}</div>
                         </div>
-                        <div style={{width:'40px', height:'40px', borderRadius:'50%', background:'#1c282f', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #00ffa355'}}>👤</div>
+                        <div style={{width:'38px', height:'38px', borderRadius:'50%', background:'#1c282f', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #00ffa355', fontSize: '1.2rem'}}>
+                            👤
+                        </div>
                     </div>
 
                     {showDropdown && (
                         <div className="dropdown-menu">
-                            <button className="drop-item" onClick={() => cambiarVista('qr', '/mi-qr')}>🆔 Mi Perfil QR</button>
+                            <div style={{padding: '12px 20px', borderBottom: '1px solid #ffffff10', fontSize: '11px', color: '#8696a0'}}>
+                                OPCIONES
+                            </div>
+                            <button className="drop-item" onClick={() => cambiarVista('mi-qr', '/mi-qr')}>🆔 Mi Perfil QR</button>
+                            
                             {(isAdmin || isSuperAdmin) && (
-                                <button className="drop-item" onClick={() => cambiarVista('admin-pagos', '/pagos')}>🛠️ Gestión Pagos</button>
+                                <>
+                                    <div style={{padding: '12px 20px', borderBottom: '1px solid #ffffff10', borderTop: '1px solid #ffffff10', fontSize: '11px', color: '#8696a0', marginTop: '5px'}}>
+                                        ADMINISTRACIÓN
+                                    </div>
+                                    <button className="drop-item" onClick={() => cambiarVista('qr-gen', '/qr-generator')}>🖨️ Generar QRs</button>
+                                </>
                             )}
-                            <button className="drop-item" style={{color:'#ff4d4d'}} onClick={() => { logout(); navigate('/login'); }}>🚪 Salir</button>
+                            
+                            <div style={{borderTop: '1px solid #ffffff10', marginTop: '5px'}}>
+                                <button className="drop-item" style={{color:'#ff4d4d'}} onClick={() => { logout(); navigate('/login'); }}>🚪 Salir del Sistema</button>
+                            </div>
                         </div>
                     )}
                 </div>

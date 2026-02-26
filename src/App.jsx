@@ -47,13 +47,14 @@ function App() {
           <Route path="/mis-pagos" element={<UserPaymentsPage />} />
           <Route path="/mis-prestamos" element={<UserLoansPage />} />
           <Route path="/mi-qr" element={<UserQRPage />} />
+          <Route path="/asistencia" element={<AttendancePage />} />
+
         </Route>
 
         {/* RUTAS SOLO PARA ADMINS */}
         <Route element={<ProtectedRoute isAllowed={isAuthenticated && (isAdmin || isSuperAdmin)} redirectTo="/mis-pagos" />}>
           <Route path="/registro" element={<ChatPage onRefreshInventory={() => setRefreshTrigger(t => t+1)} />} />
           <Route path="/inventario" element={<InventoryPage key={refreshTrigger} />} />
-          <Route path="/asistencia" element={<AttendancePage />} />
           <Route path="/pagos" element={<PagosPage />} />
           <Route path="/trabajadores" element={<UserManagementPage />} />
           <Route path="/qr-generator" element={<QRGeneratorPage />} />

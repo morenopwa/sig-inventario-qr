@@ -6,7 +6,7 @@ import {
     isSameDay, getDay, subDays, isAfter, isBefore, startOfDay, isSunday, addDays
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Wallet, TrendingUp, AlertCircle, User as UserIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Wallet, TrendingUp, User as UserIcon, Coffee } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
 const UserPaymentsPage = () => {
@@ -64,6 +64,7 @@ const UserPaymentsPage = () => {
 
     const rate = fullProfile?.hourlyRate || 0;
     const extraRate = rate * 1.25;
+    const dailyBonus = fullProfile?.additionalDaily || 0; // Campo unificado de Cena/Almuerzo/Pasaje
 
     const stats = useMemo(() => {
         const hoy = startOfDay(new Date());
@@ -84,13 +85,17 @@ const UserPaymentsPage = () => {
 
         const days = allDays.map(day => {
             const marca = attendance.find(a => isSameDay(parseISO(a.date), day));
-            let nH = 0, eH = 0, nPay = 0, ePay = 0, dayTotal = 0, debtH = 0;
+            let nH = 0, eH = 0, nPay = 0, ePay = 0, dayTotal = 0, debtH = 0, appliedBonus = 0;
 
+            // REGLA: Si es domingo, se pagan 8 horas por ley + el bono adicional
             if (isSunday(day)) {
                 nH = 8;
                 nPay = nH * rate;
-                dayTotal = nPay;
-            } else if (marca) {
+                appliedBonus = dailyBonus;
+                dayTotal = nPay + appliedBonus;
+            } 
+            // Si hay registro de asistencia (asistió a trabajar)
+            else if (marca) {
                 const dIn = aplicarReglasHorarias(marca.checkIn, 'IN');
                 const dOut = aplicarReglasHorarias(marca.checkOut, 'OUT');
                 const totalH = marca.manualHours ?? calcularDiferenciaHoras(dIn, dOut);
@@ -100,7 +105,8 @@ const UserPaymentsPage = () => {
                 debtH = totalH < 8 ? 8 - totalH : 0;
                 nPay = nH * rate;
                 ePay = eH * extraRate;
-                dayTotal = nPay + ePay;
+                appliedBonus = dailyBonus; // Se suma el bono por día asistido
+                dayTotal = nPay + ePay + appliedBonus;
             }
 
             if (!isBefore(day, inicioCicloActual) && !isAfter(day, finCicloActual)) {
@@ -115,7 +121,7 @@ const UserPaymentsPage = () => {
             ciclosMap[keyCiclo] += dayTotal;
 
             return { 
-                date: day, nH, eH, debtH, nPay, ePay, dayTotal, 
+                date: day, nH, eH, debtH, nPay, ePay, appliedBonus, dayTotal, 
                 hasRecord: !!marca, isSunday: isSunday(day),
                 isOtherMonth: day.getMonth() !== currentDate.getMonth(),
                 cicloRef: keyCiclo
@@ -123,7 +129,7 @@ const UserPaymentsPage = () => {
         });
 
         return { days, acumuladoCicloActual, deudaCicloActual, ciclosMap, rangoCicloActual: `${format(inicioCicloActual, 'dd/MM')} al ${format(finCicloActual, 'dd/MM')}` };
-    }, [currentDate, attendance, rate, extraRate]);
+    }, [currentDate, attendance, rate, extraRate, dailyBonus]);
 
     if (loading) return <div style={ss.loading}>Cargando Planilla...</div>;
 
@@ -146,6 +152,14 @@ const UserPaymentsPage = () => {
                     </div>
                 </div>
                 <div style={ss.summaryCard}>
+                    <Coffee size={18} color="#ffbc00" />
+                    <div>
+                        <span style={ss.label}>ADIC. DIARIO (CENA/PAS)</span>
+                        <div style={ss.val}>S/ {dailyBonus.toFixed(2)}</div>
+                        <span style={ss.subLabel}>Fijo por día asistido</span>
+                    </div>
+                </div>
+                <div style={ss.summaryCard}>
                     <Wallet size={18} color="#34b7f1" />
                     <div>
                         <span style={ss.label}>TARIFA BASE</span>
@@ -161,14 +175,13 @@ const UserPaymentsPage = () => {
                 <button onClick={() => setCurrentDate(addDays(endOfMonth(currentDate), 1))} style={ss.navBtn}><ChevronRight /></button>
             </div>
 
-            {/* Contenedor con altura máxima y scroll para que la cabecera funcione */}
             <div style={ss.cardWrapper}>
                 <table style={ss.table}>
                     <thead style={ss.thead}>
                         <tr>
                             <th style={ss.th}>FECHA</th>
-                            <th style={ss.th}>NORMALES</th>
-                            <th style={ss.th}>EXTRAS</th>
+                            <th style={ss.th}>HORAS (N/E)</th>
+                            <th style={ss.th}>BONO D.</th>
                             <th style={ss.th}>DEUDA</th>
                             <th style={{...ss.th, textAlign: 'right'}}>SUBTOTAL</th>
                         </tr>
@@ -176,8 +189,6 @@ const UserPaymentsPage = () => {
                     <tbody>
                         {stats.days.map((d, i) => {
                             const esMiercoles = getDay(d.date) === 3;
-                            // PAGO EL SÁBADO SIGUIENTE: Jueves(0) + 9 días = Sábado de la otra semana
-                            // O simplemente: Miércoles + 3 días.
                             const fechaSabadoPago = addDays(d.date, 3); 
                             const totalDelCiclo = stats.ciclosMap[d.cicloRef];
 
@@ -192,15 +203,14 @@ const UserPaymentsPage = () => {
                                         </td>
                                         <td style={ss.td}>
                                             <div style={ss.cellCol}>
-                                                <span style={ss.hNormal}>{d.nH.toFixed(1)}h</span>
-                                                <span style={ss.moneySub}>S/ {d.nPay.toFixed(2)}</span>
+                                                <span style={ss.hNormal}>{d.nH.toFixed(1)}h / <span style={{color:'#ffbc00'}}>{d.eH.toFixed(1)}h</span></span>
+                                                <span style={ss.moneySub}>S/ {(d.nPay + d.ePay).toFixed(2)}</span>
                                             </div>
                                         </td>
                                         <td style={ss.td}>
-                                            <div style={ss.cellCol}>
-                                                <span style={ss.hExtra}>{d.eH > 0 ? `${d.eH.toFixed(1)}h` : '-'}</span>
-                                                <span style={ss.moneySub}>{d.eH > 0 ? `S/ ${d.ePay.toFixed(2)}` : '-'}</span>
-                                            </div>
+                                            <span style={{color: d.appliedBonus > 0 ? '#ffbc00' : '#8696a0', fontSize: '12px', fontWeight: 'bold'}}>
+                                                {d.appliedBonus > 0 ? `+S/ ${d.appliedBonus.toFixed(2)}` : '-'}
+                                            </span>
                                         </td>
                                         <td style={ss.td}>
                                             {d.isSunday ? <span style={{color:'#00ffa3', fontSize:'9px'}}>DOMINICAL</span> : d.debtH > 0 ? <span style={ss.debtText}>-{d.debtH.toFixed(1)}h</span> : d.hasRecord ? '✅' : '-'}
@@ -235,35 +245,17 @@ const ss = {
     adminHeader: { backgroundColor: '#1a2429', padding: '12px', borderRadius: '10px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #34b7f1' },
     adminTitle: { fontSize: '13px', fontWeight: 'bold' },
     topRow: { display: 'flex', gap: '12px', marginBottom: '20px', overflowX: 'auto' },
-    summaryCard: { minWidth: '200px', flex: 1, backgroundColor: '#111b21', padding: '15px', borderRadius: '15px', border: '1px solid #2a3942', display: 'flex', alignItems: 'center', gap: '12px' },
+    summaryCard: { minWidth: '180px', flex: 1, backgroundColor: '#111b21', padding: '15px', borderRadius: '15px', border: '1px solid #2a3942', display: 'flex', alignItems: 'center', gap: '12px' },
     label: { fontSize: '9px', color: '#8696a0', fontWeight: 'bold', textTransform: 'uppercase' },
     val: { fontSize: '16px', fontWeight: 'bold' },
     subLabel: { fontSize: '10px', color: '#8696a0' },
     monthNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#202c33', padding: '10px', borderRadius: '12px', marginBottom: '15px' },
     monthName: { textTransform: 'capitalize', fontWeight: 'bold', color: '#00ffa3', fontSize: '14px' },
     navBtn: { background: 'none', border: 'none', color: '#8696a0', cursor: 'pointer' },
-    
-    // CABECERA FIJA: El truco está en el cardWrapper y el sticky en el th
-    cardWrapper: { 
-        backgroundColor: '#111b21', 
-        borderRadius: '16px', 
-        border: '1px solid #2a3942', 
-        overflow: 'auto',
-        maxHeight: '70vh' // Altura para que el scroll interno funcione
-    },
+    cardWrapper: { backgroundColor: '#111b21', borderRadius: '16px', border: '1px solid #2a3942', overflow: 'auto', maxHeight: '70vh' },
     table: { width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: '600px' },
     thead: { position: 'sticky', top: 0, zIndex: 10 },
-    th: { 
-        position: 'sticky', 
-        top: 0, 
-        padding: '12px', 
-        textAlign: 'left', 
-        color: '#8696a0', 
-        fontSize: '9px', 
-        backgroundColor: '#1a2429', 
-        textTransform: 'uppercase',
-        borderBottom: '2px solid #222d34'
-    },
+    th: { position: 'sticky', top: 0, padding: '12px', textAlign: 'left', color: '#8696a0', fontSize: '9px', backgroundColor: '#1a2429', textTransform: 'uppercase', borderBottom: '2px solid #222d34' },
     tr: { borderBottom: '1px solid #222d34' },
     td: { padding: '12px', borderBottom: '1px solid #222d34' },
     dateBox: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
@@ -271,7 +263,6 @@ const ss = {
     dName: { fontSize: '10px', color: '#8696a0', textTransform: 'uppercase' },
     cellCol: { display: 'flex', flexDirection: 'column' },
     hNormal: { color: '#34b7f1', fontWeight: 'bold', fontSize: '13px' },
-    hExtra: { color: '#ffbc00', fontWeight: 'bold', fontSize: '13px' },
     moneySub: { fontSize: '10px', color: '#8696a0' },
     debtText: { color: '#ff4d4d', fontWeight: 'bold', fontSize: '12px' },
     dayPay: { color: '#00ffa3', fontWeight: 'bold', fontSize: '14px' },

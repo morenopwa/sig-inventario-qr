@@ -1,14 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import useAuth from '../hooks/useAuth';
 import SmartScanner from '../components/SmartScanner';
-import { FileSpreadsheet, Share2, Calendar, UserCheck, Clock } from 'lucide-react';
+import { FileSpreadsheet, Share2, Calendar, UserCheck, Clock, Star, CheckCircle, AlertCircle } from 'lucide-react';
 
 const AttendancePage = () => {
+    const { user, isAdmin, isSuperAdmin } = useAuth();
     const [asistencias, setAsistencias] = useState([]);
+    // La fecha por defecto es hoy en Lima
     const [fechaFiltro, setFechaFiltro] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }));
     const [loading, setLoading] = useState(false);
     const [isScannerActive, setIsScannerActive] = useState(false);
+    
+    const [scannedId, setScannedId] = useState(null); 
+    const [notificacion, setNotificacion] = useState({ show: false, msg: '', type: 'success' });
+    const rowRefs = useRef({}); 
+
     const apiUrl = import.meta.env.VITE_API_URL;
 
     // --- LÓGICA DE NEGOCIO ---
@@ -30,31 +38,24 @@ const AttendancePage = () => {
     };
 
     const calcularDiferenciaHoras = (entrada, salida) => {
-    if (!entrada || !salida) return 0;
-    
-    const dEntrada = new Date(entrada);
-    const dSalida = new Date(salida);
-    
-    let ms = dSalida - dEntrada;
-    let horas = ms / (1000 * 60 * 60);
+        if (!entrada || !salida) return 0;
+        const dEntrada = new Date(entrada);
+        const dSalida = new Date(salida);
+        let ms = dSalida - dEntrada;
+        let horas = ms / (1000 * 60 * 60);
 
-    // Definimos los límites del almuerzo para ese día específico
-    const inicioAlmuerzo = new Date(entrada);
-    inicioAlmuerzo.setHours(13, 0, 0, 0); // 1:00 PM
+        const inicioAlmuerzo = new Date(entrada);
+        inicioAlmuerzo.setHours(13, 0, 0, 0); 
+        const finAlmuerzo = new Date(entrada);
+        finAlmuerzo.setHours(14, 0, 0, 0); 
 
-    const finAlmuerzo = new Date(entrada);
-    finAlmuerzo.setHours(14, 0, 0, 0); // 2:00 PM
+        if (dEntrada < inicioAlmuerzo && dSalida > finAlmuerzo) {
+            horas -= 1; 
+        } 
+        return horas > 0 ? horas : 0;
+    };
 
-    // REGLA: Si el trabajador estuvo presente durante todo el rango de almuerzo
-    if (dEntrada < inicioAlmuerzo && dSalida > finAlmuerzo) {
-        horas -= 1; // Restamos la hora de refrigerio
-    } 
-    // OPCIONAL: Si quieres ser más estricto y restar proporcionalmente 
-    // si sale en medio del almuerzo, podrías agregar más lógica, 
-    // pero usualmente se resta la hora completa si cruzan el umbral.
-
-    return horas > 0 ? horas : 0;
-};
+    // --- CARGA DE DATOS ---
 
     const cargarDatos = useCallback(async () => {
         try {
@@ -67,20 +68,21 @@ const AttendancePage = () => {
             const trabajadores = resUsers.data.filter(u => u.type === 'Trabajador');
             const marcasDeHoy = resAtt.data;
 
-            const listaFinal = trabajadores.map(user => {
+            const listaFinal = trabajadores.map(t => {
                 const marca = marcasDeHoy.find(m => {
                     const idWorker = m.worker?._id || m.worker;
-                    return String(idWorker) === String(user._id);
+                    return String(idWorker) === String(t._id);
                 });
                 
                 const checkInAjustado = marca?.checkIn ? aplicarReglasHorarias(marca.checkIn, 'IN') : null;
                 const checkOutAjustado = marca?.checkOut ? aplicarReglasHorarias(marca.checkOut, 'OUT') : null;
 
                 return {
-                    id: user._id,
+                    id: t._id,
+                    customId: t.customId,
+                    dni: t.dni,
                     attendanceId: marca?._id || null,
-                    fullName: `${user.lastName}, ${user.name}`,
-                    dni: user.dni,
+                    fullName: `${t.lastName}, ${t.name}`,
                     checkIn: marca?.checkIn || null,
                     checkOut: marca?.checkOut || null,
                     displayIn: checkInAjustado,
@@ -102,46 +104,81 @@ const AttendancePage = () => {
         cargarDatos();
     }, [cargarDatos]);
 
+    const mostrarToast = (msg, type = 'success') => {
+        setNotificacion({ show: true, msg, type });
+        setTimeout(() => setNotificacion({ show: false, msg: '', type: 'success' }), 5000);
+    };
+
     // --- ACCIONES ---
 
     const handleManualEdit = async (attendanceId, workerId, field, newTime) => {
         if (!newTime) return;
-        
         try {
             const [hours, minutes] = newTime.split(':');
             const ISOString = `${fechaFiltro}T${hours}:${minutes}:00`;
             const dateToSave = new Date(ISOString);
 
-            if (isNaN(dateToSave.getTime())) return;
-
             await axios.patch(`${apiUrl}/api/attendance/editar`, {
-                attendanceId: attendanceId, 
-                workerId: workerId,
-                date: fechaFiltro,
-                field: field,
-                value: dateToSave.toISOString()
+                attendanceId, workerId, date: fechaFiltro, field, value: dateToSave.toISOString()
             });
 
             await cargarDatos(); 
+            mostrarToast("Registro actualizado correctamente");
         } catch (err) {
-            alert("Error al actualizar la hora manual");
+            mostrarToast("Error al actualizar la hora", "error");
         }
     };
 
+    // --- HANDLE SCAN CORREGIDO PARA LA FECHA SELECCIONADA ---
     const handleScan = async (codigo) => {
         if (!codigo || loading) return;
         setLoading(true);
+        const idLimpio = codigo.trim();
+
         try {
-            const res = await axios.post(`${apiUrl}/api/attendance/registrar`, { workerId: codigo.trim() });
+            // ENVIAMOS LA fechaFiltro PARA QUE EL BACKEND REGISTRE EN EL DÍA CORRECTO
+            const res = await axios.post(`${apiUrl}/api/attendance/registrar`, { 
+                workerId: idLimpio,
+                date: fechaFiltro 
+            });
+            
             new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(() => {});
-            alert(res.data.message);
+            
             await cargarDatos();
             setIsScannerActive(false);
+
+            const trabajador = asistencias.find(a => 
+                String(a.customId) === idLimpio || String(a.dni) === idLimpio || String(a.id) === idLimpio
+            );
+
+            ejecutarEnfoque(trabajador ? trabajador.id : idLimpio, res.data.message);
+
         } catch (err) {
-            alert(err.response?.data?.message || "Error QR");
+            const mensajeError = err.response?.data?.message || "Error al procesar QR";
+            
+            if (mensajeError.includes("ya tiene registradas entrada y salida")) {
+                setIsScannerActive(false);
+                const trabajador = asistencias.find(a => 
+                    String(a.customId) === idLimpio || String(a.dni) === idLimpio || String(a.id) === idLimpio
+                );
+                ejecutarEnfoque(trabajador ? trabajador.id : idLimpio, "Consulta: Jornada ya completada 🔎");
+            } else {
+                mostrarToast(mensajeError, "error");
+            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const ejecutarEnfoque = (id, msg) => {
+        setScannedId(id);
+        mostrarToast(msg);
+        setTimeout(() => {
+            if (rowRefs.current[id]) {
+                rowRefs.current[id].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
+        setTimeout(() => setScannedId(null), 5000);
     };
 
     const exportarExcel = () => {
@@ -157,7 +194,7 @@ const AttendancePage = () => {
         const ws = XLSX.utils.json_to_sheet(dataParaExcel);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
-        XLSX.writeFile(wb, `Reporte_${fechaFiltro}.xlsx`);
+        XLSX.writeFile(wb, `Reporte_Asistencia_${fechaFiltro}.xlsx`);
     };
 
     const enviarResumenWhatsApp = () => {
@@ -182,9 +219,18 @@ const AttendancePage = () => {
 
     return (
         <div style={st.container}>
+            {notificacion.show && (
+                <div style={{ ...st.toast, backgroundColor: notificacion.type === 'success' ? '#00a884' : '#e91e63' }}>
+                    {notificacion.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                    {notificacion.msg}
+                </div>
+            )}
+
             <header style={st.header}>
-                <h1 style={st.title}>Panel de Control de Asistencias 📋</h1>
-                <p style={st.subtitle}>Los cambios realizados solo afectan a la fecha seleccionada</p>
+                <h1 style={st.title}>Registro de Asistencia General 📋</h1>
+                <p style={st.subtitle}>
+                    {(isAdmin || isSuperAdmin) ? "Modo Administrador" : "Modo Personal"}
+                </p>
             </header>
 
             <div style={st.scanSection}>
@@ -194,7 +240,7 @@ const AttendancePage = () => {
                     disabled={loading}
                 >
                     <UserCheck size={22} />
-                    {loading ? "PROCESANDO..." : isScannerActive ? "CERRAR CÁMARA" : "ESCANEAR QR DE PERSONAL"}
+                    {loading ? "PROCESANDO..." : isScannerActive ? "CERRAR CÁMARA" : "ESCANEAR QR"}
                 </button>
                 {isScannerActive && (
                     <div style={st.scannerContainer}>
@@ -207,7 +253,7 @@ const AttendancePage = () => {
                 <div style={st.filterGroup}>
                     <Calendar size={22} color="#00ffa3" />
                     <div style={st.dateBox}>
-                        <label style={st.dateLabel}>FECHA DE CONSULTA:</label>
+                        <label style={st.dateLabel}>FECHA SELECCIONADA:</label>
                         <input 
                             type="date" 
                             value={fechaFiltro} 
@@ -216,70 +262,78 @@ const AttendancePage = () => {
                         />
                     </div>
                 </div>
-                <div style={st.buttonGroup}>
-                    <button onClick={exportarExcel} style={st.btnExcel}><FileSpreadsheet size={18} /> Excel</button>
-                    <button onClick={enviarResumenWhatsApp} style={st.btnWA}><Share2 size={18} /> WhatsApp</button>
-                </div>
+
+                {(isAdmin || isSuperAdmin) && (
+                    <div style={st.buttonGroup}>
+                        <button onClick={exportarExcel} style={st.btnExcel}><FileSpreadsheet size={18} /> Excel</button>
+                        <button onClick={enviarResumenWhatsApp} style={st.btnWA}><Share2 size={18} /> WhatsApp</button>
+                    </div>
+                )}
             </div>
 
             <div style={st.tableWrapper}>
-                {/* La Key en la tabla garantiza independencia total entre fechas */}
-                <table style={st.table} key={fechaFiltro}>
+                <table style={st.table}>
                     <thead>
                         <tr style={st.thead}>
-                            <th style={st.th}>N°</th>
+                            <th style={st.th}>Ref</th>
                             <th style={st.th}>Personal</th>
-                            <th style={st.th}>Entrada (Real)</th>
-                            <th style={st.th}>Salida (Real)</th>
-                            <th style={st.th}>Horas Calc.</th>
+                            <th style={st.th}>Entrada</th>
+                            <th style={st.th}>Salida</th>
+                            <th style={st.th}>Horas</th>
                             <th style={st.th}>Estado</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {asistencias.map((a, index) => (
-                            <tr key={`${a.id}-${fechaFiltro}`} style={st.tr}>
-                                <td style={st.tdNum}>{index + 1}</td>
-                                <td style={st.tdName}>
-                                    <div style={st.nameText}>{a.fullName}</div>
-                                    <div style={st.dniText}>DNI: {a.dni}</div>
-                                </td>
-                                
-                                <td style={st.tdTime}>
-                                    <div style={st.editContainer}>
-                                        <input 
-                                            type="time" 
-                                            defaultValue={formatearHoraParaInput(a.checkIn)}
-                                            onBlur={(e) => handleManualEdit(a.attendanceId, a.id, 'checkIn', e.target.value)}
-                                            style={st.timeInput}
-                                        />
-                                        <span style={st.miniLabel}>Ajuste: {formatearHoraDisplay(a.displayIn)}</span>
-                                    </div>
-                                </td>
+                        {asistencias.map((a, index) => {
+                            const esMiFila = String(a.id) === String(user?._id);
+                            const estaSiendoEscaneado = String(a.id) === String(scannedId);
+                            const puedeEditar = isAdmin || isSuperAdmin || esMiFila;
 
-                                <td style={st.tdTime}>
-                                    <div style={st.editContainer}>
-                                        <input 
-                                            type="time" 
-                                            defaultValue={formatearHoraParaInput(a.checkOut)}
-                                            onBlur={(e) => handleManualEdit(a.attendanceId, a.id, 'checkOut', e.target.value)}
-                                            style={st.timeInput}
-                                        />
-                                        <span style={st.miniLabel}>Ajuste: {formatearHoraDisplay(a.displayOut)}</span>
-                                    </div>
-                                </td>
-
-                                <td style={st.tdHours}>
-                                    <Clock size={14} style={{marginRight: '5px'}} />
-                                    {a.totalHours.toFixed(1)} h
-                                </td>
-                                
-                                <td style={st.td}>
-                                    {a.status === 'PRESENTE' && <span style={st.badgePresente}>✅ EN PLANTA</span>}
-                                    {a.status === 'COMPLETO' && <span style={st.badgeCompleto}>🏁 TERMINADO</span>}
-                                    {a.status === 'AUSENTE' && <span style={st.badgeAusente}>⏳ FALTÓ</span>}
-                                </td>
-                            </tr>
-                        ))}
+                            return (
+                                <tr 
+                                    key={`${a.id}-${fechaFiltro}`}
+                                    ref={el => rowRefs.current[a.id] = el}
+                                    style={{
+                                        ...st.tr,
+                                        backgroundColor: estaSiendoEscaneado ? 'rgba(0, 255, 163, 0.2)' : (esMiFila ? 'rgba(0, 255, 163, 0.08)' : 'transparent'),
+                                        transform: estaSiendoEscaneado ? 'scale(1.02)' : 'scale(1)',
+                                        borderLeft: (estaSiendoEscaneado || esMiFila) ? '4px solid #00ffa3' : '1px solid #222d34'
+                                    }}
+                                >
+                                    <td style={st.tdNum}>{estaSiendoEscaneado ? '🎯' : (esMiFila ? <Star size={14} color="#00ffa3" fill="#00ffa3" /> : index + 1)}</td>
+                                    <td style={st.tdName}>
+                                        <div style={{ ...st.nameText, color: (estaSiendoEscaneado || esMiFila) ? '#00ffa3' : '#e9edef' }}>{a.fullName}</div>
+                                        <div style={st.dniText}>DNI: {a.dni}</div>
+                                    </td>
+                                    <td style={st.tdTime}>
+                                        <input type="time" 
+                                        key={`in-${a.id}-${fechaFiltro}`}
+                                        defaultValue={formatearHoraParaInput(a.checkIn)} onBlur={(e) => 
+                                        handleManualEdit(a.attendanceId, a.id, 'checkIn', e.target.value)} 
+                                        disabled={!puedeEditar}
+                                         style={st.timeInput} />
+                                    </td>
+                                    <td style={st.tdTime}>
+                                        <input type="time" 
+                                        key={`out-${a.id}-${fechaFiltro}`}
+                                        defaultValue={formatearHoraParaInput(a.checkOut)} onBlur={(e) => 
+                                        handleManualEdit(a.attendanceId, a.id, 'checkOut', e.target.value)} 
+                                        disabled={!puedeEditar} 
+                                        style={st.timeInput} />
+                                    </td>
+                                    <td style={st.tdHours}><Clock size={14} style={{marginRight: '5px', color: '#00ffa3'}} />{a.totalHours.toFixed(1)} h</td>
+                                    <td style={st.td}>
+                                        {estaSiendoEscaneado ? <span style={st.badgeScanned}>OK</span> : (
+                                            <>
+                                                {a.status === 'PRESENTE' && <span style={st.badgePresente}>✅ PLANTA</span>}
+                                                {a.status === 'COMPLETO' && <span style={st.badgeCompleto}>🏁 FIN</span>}
+                                                {a.status === 'AUSENTE' && <span style={st.badgeAusente}>⏳ ---</span>}
+                                            </>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -289,64 +343,38 @@ const AttendancePage = () => {
 
 const st = {
     container: { padding: '20px', backgroundColor: '#0b141a', minHeight: '100vh', color: 'white', fontFamily: 'Segoe UI, sans-serif' },
+    toast: { position: 'fixed', top: '20px', right: '20px', padding: '15px 25px', borderRadius: '12px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 8px 20px rgba(0,0,0,0.4)', transition: '0.3s' },
     header: { marginBottom: '25px', textAlign: 'center' },
-    title: { color: '#00ffa3', fontSize: '26px', margin: 0, fontWeight: 'bold' },
+    title: { color: '#00ffa3', fontSize: '24px', margin: 0, fontWeight: 'bold' },
     subtitle: { color: '#8696a0', fontSize: '13px', marginTop: '5px' },
     scanSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px' },
-    btnScanner: (active) => ({ 
-        display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 35px', 
-        fontSize: '16px', fontWeight: 'bold', color: 'white', cursor: 'pointer', 
-        backgroundColor: active ? '#ff2e5e' : '#00a884', border: 'none', borderRadius: '50px'
-    }),
-    scannerContainer: { 
-        width: '100%', maxWidth: '400px', marginTop: '15px', borderRadius: '15px', 
-        overflow: 'hidden', border: '4px solid #00ffa3'
-    },
-    actionBar: { 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        marginBottom: '20px', flexWrap: 'wrap', gap: '15px', backgroundColor: '#111b21', 
-        padding: '20px', borderRadius: '15px', border: '1px solid #2a3942' 
-    },
+    btnScanner: (active) => ({ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 25px', fontSize: '15px', fontWeight: 'bold', color: 'white', cursor: 'pointer', backgroundColor: active ? '#ff2e5e' : '#00a884', border: 'none', borderRadius: '50px', transition: '0.3s' }),
+    scannerContainer: { width: '100%', maxWidth: '380px', marginTop: '15px', borderRadius: '15px', overflow: 'hidden', border: '4px solid #00ffa3' },
+    actionBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px', backgroundColor: '#111b21', padding: '15px 20px', borderRadius: '15px' },
     filterGroup: { display: 'flex', alignItems: 'center', gap: '15px' },
     dateBox: { display: 'flex', flexDirection: 'column', gap: '4px' },
     dateLabel: { fontSize: '10px', color: '#00ffa3', fontWeight: 'bold' },
-    dateInput: { 
-        padding: '10px 15px', borderRadius: '10px', border: '2px solid #00ffa3', 
-        backgroundColor: '#202c33', color: 'white', fontSize: '16px' 
-    },
-    buttonGroup: { display: 'flex', gap: '12px' },
-    btnExcel: { 
-        display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', 
-        backgroundColor: '#1d6f42', color: 'white', border: 'none', borderRadius: '10px', 
-        cursor: 'pointer', fontWeight: 'bold' 
-    },
-    btnWA: { 
-        display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', 
-        backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '10px', 
-        cursor: 'pointer', fontWeight: 'bold' 
-    },
-    tableWrapper: { backgroundColor: '#111b21', borderRadius: '15px', overflowX: 'auto', border: '1px solid #2a3942' },
+    dateInput: { padding: '8px 12px', borderRadius: '8px', border: '1px solid #00ffa3', backgroundColor: '#202c33', color: 'white' },
+    buttonGroup: { display: 'flex', gap: '10px' },
+    btnExcel: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 15px', backgroundColor: '#1d6f42', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' },
+    btnWA: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 15px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' },
+    tableWrapper: { backgroundColor: '#111b21', borderRadius: '15px', overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', minWidth: '800px' },
     thead: { backgroundColor: '#202c33' },
-    th: { padding: '18px', color: '#8696a0', textAlign: 'center', fontSize: '11px', textTransform: 'uppercase' },
-    tr: { borderBottom: '1px solid #222d34' },
-    td: { padding: '15px', textAlign: 'center' },
-    tdNum: { textAlign: 'center', color: '#8696a0', fontSize: '12px' },
-    tdName: { padding: '15px' },
-    nameText: { fontWeight: '600', color: '#e9edef' },
+    th: { padding: '15px', color: '#8696a0', fontSize: '11px', textTransform: 'uppercase' },
+    tr: { transition: '0.3s' },
+    td: { padding: '12px', textAlign: 'center' },
+    tdNum: { color: '#8696a0', fontSize: '12px' },
+    tdName: { padding: '12px' },
+    nameText: { fontWeight: '600' },
     dniText: { fontSize: '11px', color: '#8696a0' },
-    tdTime: { padding: '10px' },
-    editContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' },
-    timeInput: { 
-        backgroundColor: '#2a3942', border: '1px solid #3b4a54', color: '#00ffa3', 
-        padding: '5px', borderRadius: '5px', fontSize: '14px', width: '90px', 
-        textAlign: 'center', outline: 'none' 
-    },
-    miniLabel: { fontSize: '9px', color: '#8696a0', textTransform: 'uppercase' },
-    tdHours: { fontWeight: '800', color: '#e9edef', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    badgePresente: { backgroundColor: 'rgba(0,255,163,0.1)', color: '#00ffa3', padding: '6px 12px', borderRadius: '8px', fontSize: '11px' },
-    badgeCompleto: { backgroundColor: 'rgba(52,183,241,0.1)', color: '#34b7f1', padding: '6px 12px', borderRadius: '8px', fontSize: '11px' },
-    badgeAusente: { color: '#8696a0', fontSize: '11px', fontStyle: 'italic' },
+    tdTime: { padding: '8px' },
+    timeInput: { backgroundColor: '#2a3942', border: '1px solid #3b4a54', color: '#00ffa3', padding: '6px', borderRadius: '6px', width: '90px', textAlign: 'center' },
+    tdHours: { fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    badgePresente: { backgroundColor: 'rgba(0,255,163,0.1)', color: '#00ffa3', padding: '5px 10px', borderRadius: '6px', fontSize: '11px' },
+    badgeCompleto: { backgroundColor: 'rgba(52,183,241,0.1)', color: '#34b7f1', padding: '5px 10px', borderRadius: '6px', fontSize: '11px' },
+    badgeAusente: { color: '#616d73', fontSize: '11px' },
+    badgeScanned: { backgroundColor: '#00ffa3', color: '#0b141a', padding: '5px 12px', borderRadius: '50px', fontWeight: 'bold' }
 };
 
 export default AttendancePage;

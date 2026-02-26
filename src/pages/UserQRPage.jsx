@@ -43,7 +43,6 @@ const UserQRPage = () => {
         <div style={styles.container}>
             <header style={styles.header}>
                 <h2 style={styles.title}>Mi Fotocheck Digital 🪪</h2>
-                <p style={styles.subtitle}>Presenta este código en Almacén o Asistencia</p>
             </header>
 
             <div style={styles.qrCard} className="qr-card">
