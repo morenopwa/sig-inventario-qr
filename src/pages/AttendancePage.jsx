@@ -101,8 +101,9 @@ const AttendancePage = () => {
     }, [apiUrl, fechaFiltro]);
 
     useEffect(() => {
+        setAsistencias([]);
         cargarDatos();
-    }, [cargarDatos]);
+    }, [fechaFiltro, cargarDatos]);
 
     const mostrarToast = (msg, type = 'success') => {
         setNotificacion({ show: true, msg, type });
@@ -289,9 +290,12 @@ const AttendancePage = () => {
                             const estaSiendoEscaneado = String(a.id) === String(scannedId);
                             const puedeEditar = isAdmin || isSuperAdmin || esMiFila;
 
+                            // FORMATEAMOS LAS HORAS PARA QUE EL INPUT LAS ENTIENDA (HH:mm)
+                            const valorEntrada = formatearHoraParaInput(a.checkIn);
+                            const valorSalida = formatearHoraParaInput(a.checkOut);
                             return (
                                 <tr 
-                                    key={`${a.id}-${fechaFiltro}`}
+                                    key={`row-${a.id}-${fechaFiltro}`}
                                     ref={el => rowRefs.current[a.id] = el}
                                     style={{
                                         ...st.tr,
@@ -300,7 +304,9 @@ const AttendancePage = () => {
                                         borderLeft: (estaSiendoEscaneado || esMiFila) ? '4px solid #00ffa3' : '1px solid #222d34'
                                     }}
                                 >
-                                    <td style={st.tdNum}>{estaSiendoEscaneado ? '🎯' : (esMiFila ? <Star size={14} color="#00ffa3" fill="#00ffa3" /> : index + 1)}</td>
+                                    <td style={st.tdNum}>
+                                        {estaSiendoEscaneado ? '🎯' : (esMiFila ? 
+                                        <Star size={14} color="#00ffa3" fill="#00ffa3" /> : index + 1)}</td>
                                     <td style={st.tdName}>
                                         <div style={{ ...st.nameText, color: (estaSiendoEscaneado || esMiFila) ? '#00ffa3' : '#e9edef' }}>{a.fullName}</div>
                                         <div style={st.dniText}>DNI: {a.dni}</div>
