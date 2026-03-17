@@ -143,16 +143,28 @@ const UserManagementPage = () => {
         }
     };
 
-    const updateRate = async (userId, currentName) => {
-        const newRate = window.prompt(`Nueva tarifa por hora para ${currentName}:`);
-        if (newRate !== null && newRate.trim() !== "" && !isNaN(newRate)) {
-            try {
-                await axios.patch(`${apiUrl}/api/users/${userId}/rate`, { hourlyRate: parseFloat(newRate) });
-                alert("✅ Tarifa actualizada");
-                fetchUsers();
-            } catch (error) { alert("❌ Error"); }
+    // Función corregida en UserManagementPage.jsx
+const updateRate = async (userId, currentName) => {
+    const newBaseRate = window.prompt(`Nueva tarifa BASE por hora para ${currentName}:`);
+    
+    if (newBaseRate !== null && !isNaN(newBaseRate) && newBaseRate.trim() !== "") {
+        const base = parseFloat(newBaseRate);
+        // Calculamos el extra (ejemplo: +25%)
+        const extra = base * 1.25; 
+
+        try {
+            // Enviamos ambos valores al servidor para que se guarden
+            await axios.patch(`${apiUrl}/api/users/${userId}/rate`, { 
+                hourlyRate: base,
+                extraRate: extra 
+            });
+            alert(`✅ Tarifas actualizadas:\nBase: S/ ${base.toFixed(2)}\nExtra (25%): S/ ${extra.toFixed(2)}`);
+            fetchUsers();
+        } catch (error) {
+            alert("❌ Error al actualizar tarifas");
         }
-    };
+    }
+};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -236,7 +248,14 @@ const UserManagementPage = () => {
                                     u.birthday.split('T')[0].split('-').reverse().slice(0,2).join('/')
                                 ) : '-'}
                                     </td>
-                                <td style={{...st.td, color: '#00ffa3', fontWeight: 'bold'}}>S/ {u.hourlyRate || 0}</td>
+                                <td style={st.td}>
+    <div style={{fontSize: '14px', fontWeight: 'bold', color: '#00ffa3'}}>
+         S/ {u.hourlyRate || 0}
+    </div>
+    <div style={{fontSize: '11px', color: '#8696a0'}}>
+        Horas.Exta: S/ {(u.hourlyRate * 1.25).toFixed(2)} 
+    </div>
+</td>
                                 <td style={{...st.td, color: '#ffca28'}}>S/ {u.weeklyBonus || 0}</td>
                                 <td style={st.td}><span style={st.badge}>{u.role || u.type}</span></td>
                                 <td style={st.tdActions}>

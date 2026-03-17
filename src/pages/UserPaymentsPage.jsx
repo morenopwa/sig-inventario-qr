@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -8,6 +8,8 @@ import {
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Wallet, TrendingUp, User as UserIcon, Save, Edit2, Gift } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
+
+const EXTRA_FACTOR = 1.25; // 25% Fijo por ley
 
 const UserPaymentsPage = () => {
     const { id: paramId } = useParams();
@@ -23,7 +25,7 @@ const UserPaymentsPage = () => {
     const [isEditingRates, setIsEditingRates] = useState(false);
     const [isEditingBonus, setIsEditingBonus] = useState(false);
     
-    const [tempRates, setTempRates] = useState({ hourlyRate: 0, extraRate: 0 });
+    const [tempBaseRate, setTempBaseRate] = useState(0); // Solo editamos la base
     const [globalWeeklyBonus, setGlobalWeeklyBonus] = useState(0);
 
     const apiUrl = import.meta.env.VITE_API_URL;
@@ -52,41 +54,49 @@ const UserPaymentsPage = () => {
         return horas > 0 ? horas : 0;
     };
 
-    useEffect(() => {
-        const loadData = async () => {
-            if (!targetUserId) return;
-            try {
-                setLoading(true);
-                const [resUsers, resAtt] = await Promise.all([
-                    axios.get(`${apiUrl}/api/users`),
-                    axios.get(`${apiUrl}/api/attendance/worker/${targetUserId}`)
-                ]);
-                const profile = resUsers.data.find(u => u._id === targetUserId);
-                setFullProfile(profile);
-                
-                const baseH = Number(profile?.hourlyRate || 0);
-                setTempRates({ 
-                    hourlyRate: baseH, 
-                    extraRate: Number(profile?.extraRate || (baseH * 1.25)) 
-                });
-                setGlobalWeeklyBonus(Number(profile?.weeklyBonus || 0));
-                setAttendance(resAtt.data || []);
-            } catch (error) { console.error(error); } 
-            finally { setLoading(false); }
-        };
-        loadData();
-    }, [targetUserId, apiUrl, currentDate]);
+    const loadData = useCallback(async () => {
+        if (!targetUserId) return;
+        try {
+            setLoading(true);
+            const [resUsers, resAtt] = await Promise.all([
+                axios.get(`${apiUrl}/api/users`),
+                axios.get(`${apiUrl}/api/attendance/worker/${targetUserId}`)
+            ]);
+            const profile = resUsers.data.find(u => u._id === targetUserId);
+            setFullProfile(profile);
+            
+            setTempBaseRate(Number(profile?.hourlyRate || 0));
+            setGlobalWeeklyBonus(Number(profile?.weeklyBonus || 0));
+            setAttendance(resAtt.data || []);
+        } catch (error) { 
+            console.error(error); 
+        } finally { 
+            setLoading(false); 
+        }
+    }, [targetUserId, apiUrl]);
 
+    useEffect(() => {
+        loadData();
+    }, [loadData, currentDate]);
+
+    // GUARDAR TARIFAS (CÁLCULO AUTOMÁTICO DEL EXTRA)
     const handleSaveRates = async () => {
         try {
+            const base = Number(tempBaseRate);
+            const extra = base * EXTRA_FACTOR; // Cálculo automático
+
             const data = { 
-                hourlyRate: Number(tempRates.hourlyRate), 
-                extraRate: Number(tempRates.extraRate) 
+                hourlyRate: base, 
+                extraRate: extra 
             };
+            
             await axios.put(`${apiUrl}/api/users/${targetUserId}`, data);
             setFullProfile(prev => ({ ...prev, ...data }));
             setIsEditingRates(false);
-        } catch (error) { alert("Error al guardar tarifas"); }
+            alert(`Tarifas actualizadas: Base S/ ${base.toFixed(2)} | Extra S/ ${extra.toFixed(2)}`);
+        } catch (error) { 
+            alert("Error al guardar tarifas"); 
+        }
     };
 
     const handleSaveBonus = async () => {
@@ -94,7 +104,9 @@ const UserPaymentsPage = () => {
             await axios.put(`${apiUrl}/api/users/${targetUserId}`, { weeklyBonus: globalWeeklyBonus });
             setFullProfile(prev => ({ ...prev, weeklyBonus: globalWeeklyBonus }));
             setIsEditingBonus(false);
-        } catch (error) { alert("Error al guardar bono"); }
+        } catch (error) { 
+            alert("Error al guardar bono"); 
+        }
     };
 
     const stats = useMemo(() => {
@@ -112,7 +124,7 @@ const UserPaymentsPage = () => {
 
         const ciclosMap = {};
         const rate = Number(fullProfile?.hourlyRate || 0);
-        const extraRate = Number(fullProfile?.extraRate || (rate * 1.25));
+        const extraRate = Number(fullProfile?.extraRate || (rate * EXTRA_FACTOR));
 
         const days = allDays.map(day => {
             const marca = attendance.find(a => isSameDay(parseISO(a.date), day));
@@ -151,7 +163,6 @@ const UserPaymentsPage = () => {
             };
         });
 
-        // Cálculo dinámico para la tarjeta "POR COBRAR" (Ciclo en curso)
         const keyCicloActual = format(inicioCicloActual, 'yyyy-MM-dd');
         const acumuladoSinBono = ciclosMap[keyCicloActual] || 0;
 
@@ -187,15 +198,20 @@ const UserPaymentsPage = () => {
                     </div>
                 </div>
 
-                {/* TARJETA TARIFA EDITABLE */}
+                {/* TARJETA TARIFA EDITABLE (SOLO BASE) */}
                 <div style={{...ss.summaryCard, borderLeft: '4px solid #34b7f1'}}>
                     <Wallet size={18} color="#34b7f1" />
                     <div style={{ flex: 1 }}>
-                        <span style={ss.label}>TARIFAS (BASE / EXTRA)</span>
+                        <span style={ss.label}>TARIFAS (BASE / EXTRA {((EXTRA_FACTOR-1)*100)}%)</span>
                         {isEditingRates ? (
                             <div style={ss.editBox}>
-                                <input style={ss.inputSmall} type="number" value={tempRates.hourlyRate} onChange={(e) => setTempRates({...tempRates, hourlyRate: e.target.value})}/>
-                                <input style={ss.inputSmall} type="number" value={tempRates.extraRate} onChange={(e) => setTempRates({...tempRates, extraRate: e.target.value})}/>
+                                <input 
+                                    style={ss.inputSmall} 
+                                    type="number" 
+                                    value={tempBaseRate} 
+                                    onChange={(e) => setTempBaseRate(e.target.value)}
+                                    placeholder="Base"
+                                />
                                 <button onClick={handleSaveRates} style={ss.saveBtn}><Save size={14}/></button>
                             </div>
                         ) : (
@@ -211,7 +227,7 @@ const UserPaymentsPage = () => {
                 <div style={{...ss.summaryCard, borderLeft: '4px solid #ffbc00'}}>
                     <Gift size={18} color="#ffbc00" />
                     <div style={{ flex: 1 }}>
-                        <span style={ss.label}>BONO SEMANAL FIJO</span>
+                        <span style={ss.label}>Adicional(cena/pasajes/etc)</span>
                         {isEditingBonus ? (
                             <div style={ss.editBox}>
                                 <input style={ss.inputSmall} type="number" value={globalWeeklyBonus} onChange={(e) => setGlobalWeeklyBonus(e.target.value)}/>
@@ -241,7 +257,7 @@ const UserPaymentsPage = () => {
                             <th style={ss.th}>HORAS (N/E)</th>
                             <th style={ss.th}>GANANCIA DÍA</th>
                             <th style={ss.th}>ESTADO</th>
-                            <th style={{...ss.th, textAlign: 'right'}}>SUBTOTAL</th>
+                            <th style={{...ss.th, textAlign: 'right'}}>SUBTOTAL SEMANA</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -270,7 +286,7 @@ const UserPaymentsPage = () => {
                                             <span style={ss.dayPay}>S/ {totalHorasMoney.toFixed(2)}</span>
                                         </td>
                                         <td style={ss.td}>
-                                            {d.isSunday ? <span style={{color:'#00ffa3', fontSize:'9px', fontWeight:'bold'}}>DOMINICAL</span> : d.debtH > 0 ? <span style={ss.debtText}>-{d.debtH.toFixed(1)}h</span> : d.hasRecord ? '✅' : '-'}
+                                            {d.isSunday ? <span style={{color:'#00ffa3', fontSize:'9px', fontWeight:'bold'}}>DOMINICAL ✅</span> : d.debtH > 0 ? <span style={ss.debtText}>-{d.debtH.toFixed(1)}h</span> : d.hasRecord ? '✅' : '-'}
                                         </td>
                                         <td style={{...ss.td, textAlign: 'right'}}>
                                             <span style={ss.moneySub}>S/ {stats.ciclosMap[d.cicloRef].toFixed(2)}</span>
@@ -282,7 +298,7 @@ const UserPaymentsPage = () => {
                                                 📅 PAGO EL SÁBADO {format(fechaSabadoPago, 'dd/MM')}
                                             </td>
                                             <td colSpan="2" style={ss.tdBonusDesc}>
-                                                <span style={{color: '#ffbc00'}}>+ S/ {Number(globalWeeklyBonus).toFixed(2)} Bono Semanal</span>
+                                                <span style={{color: '#ffbc00'}}>+ S/ {Number(globalWeeklyBonus).toFixed(2)} Bono Fijo</span>
                                             </td>
                                             <td style={ss.tdCicloMonto}>
                                                 <div style={ss.totalLabel}>TOTAL A PAGAR</div>
@@ -312,7 +328,7 @@ const ss = {
     val: { fontSize: '17px', fontWeight: 'bold' },
     subLabel: { fontSize: '10px', color: '#8696a0' },
     editBox: { display: 'flex', gap: '5px', alignItems: 'center' },
-    inputSmall: { width: '70px', backgroundColor: '#202c33', border: '1px solid #34b7f1', color: '#fff', borderRadius: '4px', padding: '4px', fontSize: '13px' },
+    inputSmall: { width: '80px', backgroundColor: '#202c33', border: '1px solid #34b7f1', color: '#fff', borderRadius: '4px', padding: '4px', fontSize: '13px' },
     saveBtn: { background: '#34b7f1', border: 'none', borderRadius: '4px', padding: '6px', cursor: 'pointer', color: '#fff', display: 'flex' },
     monthNav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#202c33', padding: '10px', borderRadius: '12px', marginBottom: '15px' },
     monthName: { textTransform: 'capitalize', fontWeight: 'bold', color: '#00ffa3', fontSize: '14px' },
